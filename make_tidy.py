@@ -8,6 +8,10 @@ import argparse
 import os
 import chimera_tools
 import pickle
+from sklearn.cluster import KMeans
+from sys import exit
+import numpy as np
+
 
 def main():
     dir = os.path.dirname(__file__)
@@ -57,12 +61,46 @@ def main():
         parent = df[parent_index]['sequence']
         df[pn+'_fraction'] = [identity(parent.item(),s) for s in df['sequence']]
 
+
+    # get the raw gfp values from the ratio and the mKate values
+    df['gfp'] = df['sum_ratio']*df['mKate_mean']
+
+    # cluster expressors
+    kmeans = KMeans(n_clusters=3)
+    exp = np.transpose(np.array(df[expressed]['mKate_mean']))
+    exp = np.matrix(exp).T
+    kmeans.fit(exp)
+    centers = sorted(kmeans.cluster_centers_)
+    print centers
+    exp_level = [-1 if df.loc[i]['expression']==-1 else which_cluster(centers,df.loc[i]['mKate_mean'])\
+                 for i in df.index]
+    df['exp_level'] = exp_level
+
+    # cluster for localization
+    kmeans = KMeans(n_clusters=3)
+    loc = np.array(df[expressed]['sum_ratio'])
+    loc = np.matrix(loc).T
+    kmeans.fit(loc)
+    centers = sorted(kmeans.cluster_centers_)
+    loc_level = [-1 if df.loc[i]['expression']==-1 else which_cluster(centers,df.loc[i]['sum_ratio'])\
+                 for i in df.index]
+    df['loc_level'] = loc_level
+    print centers
+
+    # pickle
     with open(os.path.join(dir, args.name.split('.xlsx')[0] + '.pkl'), 'wb') as f:
         pickle.dump(df, f)
-
+    # save as a csv
     with open(os.path.join(dir, args.name.split('.xlsx')[0] + '.csv'), 'wb') as f:
         df.to_csv(f)
 
+
+def which_cluster(centers, point):
+    '''
+    Return index of cluster closest to the point
+    '''
+    distances = [(c-point)**2 for c in centers]
+    return np.argmin(distances)
 
 def identity(str1, str2):
     '''

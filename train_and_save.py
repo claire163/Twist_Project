@@ -5,11 +5,13 @@ python2 train_and_save.py -k structure -t res.xlsx -n name
 '''
 import sys
 sys.path.append ('/Users/seinchin/Documents/Caltech/Arnold Lab/Programming tools/GPModel')
-import argparse, gpmodel, gpkernel, os, pickle, gptools
+import argparse, gpmodel, gpkernel, os, gptools
+import cPickle as pickle
 from chimera_tools import *
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import datetime
 
 def main ():
     dir = os.path.dirname(__file__)
@@ -18,11 +20,13 @@ def main ():
     parser.add_argument('-t', '--training',required=True)
     parser.add_argument('-n', '--name',required=True)
     parser.add_argument('-y', '--y_column',required=True)
+    parser.add_argument('-p', '--plot', action='store_true')
+    parser.add_argument('-d', '--drop',required=False, type=float)
+
 
     args = parser.parse_args()
     a_and_c = os.path.join(dir, 'alignment_and_contacts.pkl')
     sample_space, contacts = pickle.load(open(a_and_c))
-    training_chimeras = os.path.join(dir, args.training)
     c_assignments_file = os.path.join(dir,'clibrary.output')
     n_assignments_file = os.path.join(dir,'nlibrary.output')
     dict_file = os.path.join(dir,'dict.xlsx')
@@ -41,40 +45,47 @@ def main ():
     # the abbreviations to which blocks are present
     # we need to shift all the parent numbers down by one to be consistent with
     # how they are recorded elsewhere
-    train_df = pd.read_excel(training_chimeras)
-    train_df = pd.DataFrame.dropna(train_df) # drop rows that have not been tested
-    train_df['name'] = [s.lower() for s in train_df['name']]
-    Ys = pd.Series([t for t in train_df[args.y_column]], index=train_df['name'])
-    # make binary data 1/-1 instead of 1/0
-    if sum([1 if y==1 or y==0 else 0 for y in Ys]) == len(Ys):
-        Ys = Ys*2-1
-
-    # make the name_dict from dict.xlsx
-    name_dict = make_name_dict(dict_file)
+    with open (os.path.join(dir,args.training),'r') as f:
+        train_df = pickle.load(f)
 
 
-    ## load the assignments files
-    # put this info in a dictionary because it's easier
-    c_assignments_dict = load_assignments(c_assignments_file)
-    n_assignments_dict = load_assignments(n_assignments_file)
+    if args.drop == None:
+        # pull out the entries that don't have NaN in the y_column
+        not_dropped = ~pd.isnull(train_df[args.y_column])
+        Ys = train_df[not_dropped][args.y_column]
+        Ys.index = train_df[not_dropped]['name']
+        # make the X_seqs
+        X_seqs = [list(seq) for seq in train_df[not_dropped]['sequence']]
+        X_seqs = pd.DataFrame(X_seqs, index = Ys.index)
 
-    # for each member of the training set, we want to generate a sequence
-    X_seqs = []
-    for name in train_df['name']:
-        if name[0] in set(['n', 'N']):
-            X_seqs.append(make_sequence(name_dict[name], n_assignments_dict, sample_space))
-        else:
-            X_seqs.append(make_sequence(name_dict[name], c_assignments_dict, sample_space))
-    X_seqs = pd.DataFrame(X_seqs, index = train_df['name'])
-    gptools.plot_LOO(X_seqs,Ys,kern)#,save_as=os.path.join(dir,'ham_class_test.png'))
-    plt.show ()
-    exit('')
+    else:
+        Ys = train_df[args.y_column]
+        Ys = Ys.fillna(args.drop)
+        Ys.index = train_df['name']
+        X_seqs = [list(seq) for seq in train_df['sequence']]
+        X_seqs = pd.DataFrame( X_seqs, index = Ys.index)
 
-    print 'Training model...'
-    model = gpmodel.GPModel(X_seqs,Ys,kern,guesses=[100,10])
-    print 'Pickling model...'
-    with open(os.path.join(dir, args.name + args.kernel + '_kernel.pkl'), 'wb') as f:
-        pickle.dump(model, f)
+    dt = datetime.date.today()
+    name = str(dt) + '_' + args.name + '_' + args.y_column + '_' + args.kernel
+
+    if args.plot:
+        print 'Making LOO plot...'
+        predicted, std = gptools.plot_LOO(X_seqs,Ys,kern, lab=args.y_column,
+                        save_as=os.path.join(dir,name+'_LOO.pdf'))
+        with open(os.path.join(dir,name+'_LOO.txt'),'w') as f:
+            for i,n in enumerate(Ys.index):
+                f.write (n+','+str(Ys[n])+','+str(predicted[i]))
+                if std:
+                    f.write(','+str(std[i]))
+                f.write('\n')
+        plt.show ()
+
+    else:
+        print 'Training model...'
+        model = gpmodel.GPModel(X_seqs,Ys,kern,guesses=[100,10])
+        print 'Pickling model...'
+        with open(os.path.join(dir, name+ '_kernel.pkl'), 'wb') as f:
+            pickle.dump(model, f)
 
 
 
