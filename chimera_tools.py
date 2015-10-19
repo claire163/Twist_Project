@@ -3,6 +3,7 @@ Some tools for working with chimera sequences
 """
 
 import pandas as pd
+from sys import exit
 
 def load_assignments (assignments_file):
     assignments_line = [l for l in open(assignments_file).read().split('\n') if len(l)>0 and l[0]!='#']
