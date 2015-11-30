@@ -6,12 +6,13 @@ python2 train_and_save.py -k structure -t res.xlsx -n name
 import sys
 sys.path.append ('/Users/seinchin/Documents/Caltech/Arnold Lab/Programming tools/GPModel')
 import argparse, gpmodel, gpkernel, os, gptools
-import cPickle as pickle
+import dill as pickle
 from chimera_tools import *
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import datetime
+from collections import namedtuple
 
 def main ():
     dir = os.path.dirname(__file__)
@@ -36,8 +37,10 @@ def main ():
         kern = gpkernel.HammingKernel()
     elif args.kernel == 'structure':
         kern = gpkernel.StructureKernel(contacts, sample_space)
+    elif args.kernel == 'SEStructure':
+        kern = gpkernel.StructureSEKernel(contacts, sample_space)
     else:
-        sys.exit ('Kernel type must be hamming or structure')
+        sys.exit ('Invalid kernel type')
 
 
     print 'Creating training set...'
@@ -71,7 +74,7 @@ def main ():
     if args.plot:
         print 'Making LOO plot...'
         predicted, std = gptools.plot_LOO(X_seqs,Ys,kern, lab=args.y_column,
-                        save_as=os.path.join(dir,name+'_LOO.pdf'))
+                        save_as=os.path.join(dir,'plots/'+name+'_LOO.pdf'))
         with open(os.path.join(dir,name+'_LOO.txt'),'w') as f:
             for i,n in enumerate(Ys.index):
                 f.write (n+','+str(Ys[n])+','+str(predicted[i]))
@@ -82,10 +85,25 @@ def main ():
 
     else:
         print 'Training model...'
-        model = gpmodel.GPModel(X_seqs,Ys,kern,guesses=[100,10])
+        model = gpmodel.GPModel(X_seqs,Ys,kern)
+        print model.hypers
+        print '-log_ML = %f' %model.ML
+        try:
+            print '-log_LOO_P = %f' %model.log_p
+        except:
+            pass
+        save_me = {}
+        save_me['X_seqs'] = model.X_seqs
+        save_me['Y'] = model.Y
+        names = model.hypers._fields
+        hypers = {n:h for n,h in zip(names, model.hypers)}
+        print hypers
+        save_me['hypers'] = hypers
+        save_me['kern'] = model.kern
         print 'Pickling model...'
-        with open(os.path.join(dir, name+ '_kernel.pkl'), 'wb') as f:
-            pickle.dump(model, f)
+        with open(os.path.join(dir, name+ '_dict.pkl'), 'wb') as f:
+            pickle.dump(save_me, f)
+
 
 
 
