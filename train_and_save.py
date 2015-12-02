@@ -23,6 +23,8 @@ def main ():
     parser.add_argument('-y', '--y_column',required=True)
     parser.add_argument('-p', '--plot', action='store_true')
     parser.add_argument('-d', '--drop',required=False, type=float)
+    parser.add_argument('-g', '--guess', nargs='*', required=False)
+    parser.add_argument('-o', '--objective', required=False, default='log_ML')
 
 
     args = parser.parse_args()
@@ -36,9 +38,11 @@ def main ():
     if args.kernel == 'hamming':
         kern = gpkernel.HammingKernel()
     elif args.kernel == 'structure':
-        kern = gpkernel.StructureKernel(contacts, sample_space)
+        kern = gpkernel.StructureKernel(contacts)
     elif args.kernel == 'SEStructure':
-        kern = gpkernel.StructureSEKernel(contacts, sample_space)
+        kern = gpkernel.StructureSEKernel(contacts)
+    elif args.kernel == 'SEHamming':
+        kern = gpkernel.HammingSEKernel()
     else:
         sys.exit ('Invalid kernel type')
 
@@ -85,7 +89,8 @@ def main ():
 
     else:
         print 'Training model...'
-        model = gpmodel.GPModel(X_seqs,Ys,kern)
+        model = gpmodel.GPModel(X_seqs,Ys,kern,
+                                guesses=args.guess, objective=args.objective)
         print model.hypers
         print '-log_ML = %f' %model.ML
         try:
@@ -97,7 +102,6 @@ def main ():
         save_me['Y'] = model.Y
         names = model.hypers._fields
         hypers = {n:h for n,h in zip(names, model.hypers)}
-        print hypers
         save_me['hypers'] = hypers
         save_me['kern'] = model.kern
         print 'Pickling model...'
