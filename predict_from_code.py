@@ -35,8 +35,7 @@ def formatted_predict(model, seqs):
     formatted = ''
     for i, ind in enumerate(seqs.index):
         formatted += ','.join([ind] + [str(p) for p in preds[i]])
-        if i != len(seqs.index)-1:
-            formatted += '\n'
+        formatted += '\n'
     return formatted
 
 
@@ -47,7 +46,7 @@ def double_write(s, p=False, w=None):
     if p:
         print s
     if w is not None:
-        w.write(s+'\n')
+        w.write(s)
 
 
 dir = os.path.dirname(__file__)
@@ -66,8 +65,6 @@ if args.write:
 else:
     out_file = None
 
-
-
 # load the assignment dicts for contiguous and non-contiguous
 c_assignments_file = os.path.join(dir,'clibrary.output')
 n_assignments_file = os.path.join(dir,'nlibrary.output')
@@ -75,17 +72,25 @@ c_assignments_dict = chimera_tools.load_assignments(c_assignments_file)
 n_assignments_dict = chimera_tools.load_assignments(n_assignments_file)
 a_and_c = os.path.join(dir, 'alignment_and_contacts.pkl')
 sample_space, contacts = pickle.load(open(a_and_c))
+
 #load the model
+print 'Loading the model...'
 with open(os.path.join(dir,args.model),'r') as m_file:
-    model = pickle.load(m_file)
+    attributes = pickle.load(m_file)
+if all([y==1 or y==-1 for y in attributes['Y']]):
+    hypers = [attributes['hypers'][k] for k in attributes['kern'].hypers]
+else:
+    hypers = ['var_n']
+    hypers = [attributes['hypers'][k] for k in hypers+attributes['kern'].hypers]
+
+model = gpmodel.GPModel.load(args.model)
 
 
-@profile
 def main():
     if model.regr:
-        head = 'code,mean,variance'
+        head = 'code,mean,variance\n'
     else:
-        head = 'code,pi'
+        head = 'code,pi\n'
 
     double_write(head, p=args.pr, w = out_file)
 
@@ -105,6 +110,7 @@ def main():
         predicted = True
 
     if not predicted:
+        print 'Generating and predicting all sequences..'
         # generate and predict all possible chimeras
         for c in product([0,1,2],repeat=10):
             this = ''.join([str(i) for i in c])
@@ -113,17 +119,8 @@ def main():
             preds = formatted_predict(model,cod)
             double_write(preds,p=args.pr,w=out_file)
             #double_write(formatted_predict(model, codes_to_seqs(codes)),p=args.pr, w=out_file)
-
+    if args.write:
+        out_file.close()
 
 if __name__=="__main__":
     main()
-
-
-
-
-
-
-
-
-
-

@@ -8,15 +8,55 @@ import gpmodel, gpkernel, os, gptools, pickle
 import numpy as np
 import datetime
 
+import seaborn as sns
+sns.set_context('notebook', font_scale=1.5, rc={'lines.linewidth': 2.5})
+sns.set_style('darkgrid', {'axes.facecolor': '(0.875, 0.875, 0.9)'})
+
 dir = os.path.dirname(__file__)
-fname = '2015-10-09_test_expression_structure_LOO.txt'
-with open (os.path.join(dir,fname),'r') as f:
-    df = pd.read_csv(f,header=None)
 
-df.columns = ['name','actual','predicted']
+with open (os.path.join(dir,'2015-10-20_all_res.pkl'),'r') as f:
+    df = pickle.load(f)
 
-gptools.plot_ROC (df['actual'], df['predicted'], file_name='2015-10-14_exp_struct_kernel_LOO_ROC.pdf',title='Expression structure LOO')
-plt.show()
+exp_inds = df['expression'] == 1
+n_exp_inds = df['expression'] == -1
+
+
+c_df = pd.read_csv('c_chimeras_data.txt',header=None,delimiter=' ')
+n_df=pd.read_csv('n_chimeras_data.txt',delimiter=' ',header=None)
+c_df.columns=['code','E','M','Sequence']
+n_df.columns = c_df.columns
+
+plt.figure(figsize=(15,10))
+plt.plot(c_df['E'],c_df['M'],'.',alpha=.9)
+plt.plot(n_df['E'],n_df['M'],'.',alpha=.4)
+
+inds = df['exp_level'] < 1
+plt.plot(df[inds]['E'],df[inds]['M'],'o')
+inds = df['exp_level'] >= 1
+plt.plot(df[inds]['E'],df[inds]['M'],'o')
+
+
+# x1,x2,y1,y2 = EM_exp_ax.axis()
+# EM_exp_ax.set_xlim([-2,x2])
+# EM_exp_ax.set_ylim([-2,y2])
+plt.title('Expression level with E and M')
+
+
+plt.xlabel('E')
+plt.ylabel('M')
+plt.legend(['contiguous library','non-contiguous library',
+           'poor expression','good expression'],loc='best')
+plt.savefig('2015-10-22_E_M_expression2.pdf')
+#plt.show()
+
+#fname = 'LOO_results/2015-10-14__expression_hamming_LOO.txt'
+#with open (os.path.join(dir,fname),'r') as f:
+#    c_df = pd.read_csv(f)
+
+# df.columns = ['name','actual','predicted']
+
+# gptools.plot_ROC (df['actual'], df['predicted'], file_name='2015-10-14_exp_hamming_kernel_LOO_ROC.pdf',title='Expression Hamming LOO')
+# plt.show()
 
 
 

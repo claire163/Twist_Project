@@ -1,6 +1,6 @@
 """
-Reads in the measurements, adds a column for binary expression, pickle it,
-and write it to a csv.
+Reads in the measurements, adds a column for binary expression, pickles it,
+and writes it to a csv.
 """
 
 import pandas as pd
@@ -53,6 +53,9 @@ def main():
             seqs.append(''.join(chimera_tools.make_sequence(name_dict[name], c_assignments_dict, sample_space)))
     df['sequence'] = seqs
 
+    # make columns for log_mKate and log_gfp
+    df['log_mKate'] = np.log(df['mKate_mean'])
+    df['log_gfp'] = np.log(df['GFP_mean'])
 
     # calculate percentage of residues in common with each parent
     parent_names = ['c1c2', 'cschrimson', 'cheriff']
@@ -62,30 +65,29 @@ def main():
         df[pn+'_fraction'] = [identity(parent.item(),s) for s in df['sequence']]
 
 
-    # get the raw gfp values from the ratio and the mKate values
-    df['gfp'] = df['sum_ratio']*df['mKate_mean']
+#     get the raw gfp values from the ratio and the mKate values
+#     df['gfp'] = df['sum_ratio']*df['mKate_mean']
 
-    # cluster expressors
-    kmeans = KMeans(n_clusters=3)
-    exp = np.transpose(np.array(df[expressed]['mKate_mean']))
-    exp = np.matrix(exp).T
-    kmeans.fit(exp)
-    centers = sorted(kmeans.cluster_centers_)
-    print centers
-    exp_level = [-1 if df.loc[i]['expression']==-1 else which_cluster(centers,df.loc[i]['mKate_mean'])\
-                 for i in df.index]
-    df['exp_level'] = exp_level
+#     # cluster expressors
+#     kmeans = KMeans(n_clusters=3)
+#     exp = np.transpose(np.array(df[expressed]['mKate_mean']))
+#     exp = np.matrix(exp).T
+#     kmeans.fit(exp)
+#     centers = sorted(kmeans.cluster_centers_)
+#     print centers
+#     exp_level = [-1 if df.loc[i]['expression']==-1 else which_cluster(centers,df.loc[i]['mKate_mean'])\
+#                  for i in df.index]
+#     df['exp_level'] = exp_level
 
-    # cluster for localization
-    kmeans = KMeans(n_clusters=3)
-    loc = np.array(df[expressed]['sum_ratio'])
-    loc = np.matrix(loc).T
-    kmeans.fit(loc)
-    centers = sorted(kmeans.cluster_centers_)
-    loc_level = [-1 if df.loc[i]['expression']==-1 else which_cluster(centers,df.loc[i]['sum_ratio'])\
-                 for i in df.index]
-    df['loc_level'] = loc_level
-    print centers
+#     # cluster for localization
+#     kmeans = KMeans(n_clusters=3)
+#     loc = np.array(df[expressed]['sum_ratio'])
+#     loc = np.matrix(loc).T
+#     kmeans.fit(loc)
+#     centers = sorted(kmeans.cluster_centers_)
+#     loc_level = [-1 if df.loc[i]['expression']==-1 else which_cluster(centers,df.loc[i]['sum_ratio'])\
+#                  for i in df.index]
+#     df['loc_level'] = loc_level
 
     # pickle
     with open(os.path.join(dir, args.name.split('.xlsx')[0] + '.pkl'), 'wb') as f:

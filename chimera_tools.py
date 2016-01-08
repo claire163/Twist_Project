@@ -5,6 +5,48 @@ Some tools for working with chimera sequences
 import pandas as pd
 from sys import exit
 
+def contacting_terms (sample_space, contacts):
+    """ Lists the possible contacts
+
+    Parameters:
+        sample_space (iterable): Each element in sample_space contains the possible
+           amino acids at that position
+        contacts (iterable): Each element in contacts pairs two positions that
+           are considered to be in contact
+
+    Returns:
+        list: Each item in the list is a contact in the form ((pos1,aa1),(pos2,aa2))
+    """
+    contact_terms = []
+    for contact in contacts:
+        first_pos = contact[0]
+        second_pos = contact[1]
+        first_possibilities = set(sample_space[first_pos])
+        second_possibilities = set(sample_space[second_pos])
+        for aa1 in first_possibilities:
+            for aa2 in second_possibilities:
+                contact_terms.append(((first_pos,aa1),(second_pos,aa2)))
+    return contact_terms
+
+def make_contact_X (seqs, contacts, contact_terms):
+    contact_X = []
+    for seq in seqs:
+        cons = get_contacts(seq, contacts)
+        inds = [contact_terms.index(c) for c in cons]
+        X_row = [1 if i in inds else 0 for i in range(len(contact_terms))]
+        contact_X.append(X_row)
+    return contact_X
+
+def get_contacts(seq, contacts):
+    """
+    Gets the contacts for seq.
+    """
+    cons = []
+    for con in contacts:
+        term = ((con[0],seq[con[0]]),(con[1],seq[con[1]]))
+        cons.append(term)
+    return cons
+
 def load_assignments (assignments_file):
     assignments_line = [l for l in open(assignments_file).read().split('\n') if len(l)>0 and l[0]!='#']
     assignment = [ord(l.split('\t')[2]) - ord('A') for l in assignments_line if l.split('\t')[2] !='-']
