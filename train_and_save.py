@@ -39,6 +39,8 @@ def main ():
     print 'Creating kernel...'
     if args.kernel in ['hamming', 'n_code', 'c_code', 'subblock']:
         kern = gpkernel.HammingKernel()
+    elif args.kernel == 'WHamming':
+        kern = gpkernel.WeightedHammingKernel()
     elif args.kernel == 'structure':
         kern = gpkernel.StructureKernel(contacts)
     elif args.kernel == 'SEStructure':
@@ -131,14 +133,11 @@ def main ():
                 pr = predicted[p]
                 plt.plot (a, pr, '.', color=c)
             plt.title(args.kernel + ' model')
-#             plt.title ('LOO predictions for ' + args.y_column + \
-#                        ' with ' + args.kernel + ' model')
             print 'R = %.4f' %np.corrcoef(model.normed_Y, LOOs['mu'])[0,1]
-            #plt.xlim(-0.1, 3.0)
             if args.name is not None:
-                plt.savefig('plots/' + args.kernel + \
-                            '_model_' + args.y_column + '_LOO.pdf')
-                #plt.savefig('plots/'+name+'_LOO.pdf')
+#                 plt.savefig('plots/' + args.kernel + \
+#                             '_model_' + args.y_column + '_LOO.pdf')
+                plt.savefig('plots/'+name+'_LOO.pdf')
                 with open(os.path.join(dir,'LOO_results/'+name+'_LOO.txt'),'w') as f:
                     f.write('name,mu,var,y\n')
                     for i,n in enumerate(Ys.index):
@@ -160,11 +159,7 @@ def main ():
                            ' with ' + args.kernel + ' model')
                 plt.savefig('plots/'+name+'_ROC.pdf')
 
-        #plt.show ()
-
-
-
-
+        plt.show()
 
 
 if __name__ == "__main__":
