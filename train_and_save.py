@@ -43,6 +43,14 @@ def main ():
         kern = gpkernel.WeightedHammingKernel()
     elif args.kernel == 'structure':
         kern = gpkernel.StructureKernel(contacts)
+    elif args.kernel == '3/2Structure':
+        kern = gpkernel.StructureMaternKernel(contacts, '3/2')
+    elif args.kernel == '5/2Structure':
+        kern = gpkernel.StructureMaternKernel(contacts, '5/2')
+    elif args.kernel == '3/2Hamming':
+        kern = gpkernel.HammingMaternKernel(contacts, '3/2')
+    elif args.kernel == '5/2Hamming':
+        kern = gpkernel.HammingMaternKernel(contacts, '5/2')
     elif args.kernel == 'SEStructure':
         kern = gpkernel.StructureSEKernel(contacts)
     elif args.kernel in ['SEHamming', 'SEn_code', 'SEc_code', 'SEsubblock']:
@@ -147,12 +155,13 @@ def main ():
 
         else:
             preds = model.predicts(model.X_seqs)
+            preds = [p[0] for p in preds]
             auc = gptools.plot_ROC(model.Y, preds)
             print 'AUC = %.4f' %auc
 
             if args.name is not None:
                 with open ('LOO_results/' + name + '_res.txt', 'w') as f:
-                    f.write ('name, expression, pi\n')
+                    f.write ('name,'+args.y_column+ ',pi\n')
                     for n, r, p in zip (model.Y.index, model.Y, preds):
                         f.write (n + ',' + str(r) + ',' + str(p) + '\n')
                 plt.title ('ROC for ' + args.y_column + \
