@@ -25,6 +25,11 @@ def main():
     # make names lowercase
     df['name'] = [s.lower() for s in df['name']]
 
+    # get the codes from the names
+    dict_df = pd.read_excel('dict.xlsx')
+    code_dict = {n.lower():c for n,c in zip(dict_df['name'], dict_df['code'])}
+    codes = [code_dict[n] for n in df['name']]
+    df['code'] = codes
 
     # zero index codes
     df['code'] = [chimera_tools.zero_index(c) for c in df['code']]
@@ -64,30 +69,24 @@ def main():
         parent = df[parent_index]['sequence']
         df[pn+'_fraction'] = [identity(parent.item(),s) for s in df['sequence']]
 
-
-#     get the raw gfp values from the ratio and the mKate values
-#     df['gfp'] = df['sum_ratio']*df['mKate_mean']
-
-#     # cluster expressors
-#     kmeans = KMeans(n_clusters=3)
-#     exp = np.transpose(np.array(df[expressed]['mKate_mean']))
-#     exp = np.matrix(exp).T
-#     kmeans.fit(exp)
-#     centers = sorted(kmeans.cluster_centers_)
-#     print centers
-#     exp_level = [-1 if df.loc[i]['expression']==-1 else which_cluster(centers,df.loc[i]['mKate_mean'])\
-#                  for i in df.index]
-#     df['exp_level'] = exp_level
-
-#     # cluster for localization
-#     kmeans = KMeans(n_clusters=3)
-#     loc = np.array(df[expressed]['sum_ratio'])
-#     loc = np.matrix(loc).T
-#     kmeans.fit(loc)
-#     centers = sorted(kmeans.cluster_centers_)
-#     loc_level = [-1 if df.loc[i]['expression']==-1 else which_cluster(centers,df.loc[i]['sum_ratio'])\
-#                  for i in df.index]
-#     df['loc_level'] = loc_level
+    # make split for mkate_mean
+    cut = df['mKate_mean'].fillna(0).median()
+    bin_mKate = [1 if m > cut else -1 for m in df['mKate_mean']]
+    df['bin_mKate'] = bin_mKate
+    # make split for GFP
+    cut = df['GFP_mean'].fillna(0).median()
+    bin_GFP = [1 if g > cut else -1 for g in df['GFP_mean']]
+    df['bin_GFP'] = bin_GFP
+    # make split for sum_ratio
+    cut = df['sum_ratio'].dropna().median()
+    bin_sum_ratio = [np.nan if np.isnan(r) else\
+                     1 if r > cut else -1 for r in df['sum_ratio']]
+    df['bin_sum_ratio'] = bin_sum_ratio
+    # make split for intensity_ratio
+    cut = df['intensity_ratio'].dropna().median()
+    bin_intensity_ratio = [np.nan if np.isnan(r) else\
+                     1 if r > cut else -1 for r in df['intensity_ratio']]
+    df['bin_intensity_ratio'] = bin_intensity_ratio
 
     # pickle
     with open(os.path.join(dir, args.name.split('.xlsx')[0] + '.pkl'), 'wb') as f:
@@ -95,14 +94,6 @@ def main():
     # save as a csv
     with open(os.path.join(dir, args.name.split('.xlsx')[0] + '.csv'), 'wb') as f:
         df.to_csv(f)
-
-
-def which_cluster(centers, point):
-    '''
-    Return index of cluster closest to the point
-    '''
-    distances = [(c-point)**2 for c in centers]
-    return np.argmin(distances)
 
 def identity(str1, str2):
     '''
