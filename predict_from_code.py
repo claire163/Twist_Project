@@ -75,14 +75,6 @@ sample_space, contacts = pickle.load(open(a_and_c))
 
 #load the model
 print 'Loading the model...'
-with open(os.path.join(dir,args.model),'r') as m_file:
-    attributes = pickle.load(m_file)
-if all([y==1 or y==-1 for y in attributes['Y']]):
-    hypers = [attributes['hypers'][k] for k in attributes['kern'].hypers]
-else:
-    hypers = ['var_n']
-    hypers = [attributes['hypers'][k] for k in hypers+attributes['kern'].hypers]
-
 model = gpmodel.GPModel.load(args.model)
 
 
@@ -98,15 +90,19 @@ def main():
     predicted = False
     try:
         with open (os.path.join(dir,args.seq_file),'r') as f:
-            # read and predict each line
-            predicted = True
-            pass
+            seqs = pd.read_csv(f, header=None)
+        seqs.columns = ['name', 'sequence']
+        seqs = pd.DataFrame([[s for s in se] for se in seqs.sequence],
+                            index=seqs.name)
+        double_write(formatted_predict(model, seqs), p=args.pr, w=out_file)
+        predicted = True
     except:
         pass
 
     if args.code != None:
         # read and predict the code
-        double_write(formatted_predict(model, codes_to_seqs([args.code])),p=args.pr, w=out_file)
+        double_write(formatted_predict(model, codes_to_seqs([args.code])),
+                     p=args.pr, w=out_file)
         predicted = True
 
     if not predicted:
@@ -118,7 +114,6 @@ def main():
             cod = codes_to_seqs(codes)
             preds = formatted_predict(model,cod)
             double_write(preds,p=args.pr,w=out_file)
-            #double_write(formatted_predict(model, codes_to_seqs(codes)),p=args.pr, w=out_file)
     if args.write:
         out_file.close()
 
