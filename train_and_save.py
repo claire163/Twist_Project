@@ -43,13 +43,13 @@ def main ():
         kern = gpkernel.WeightedHammingKernel()
     elif args.kernel == 'structure':
         kern = gpkernel.StructureKernel(contacts)
-    elif args.kernel == '3/2Structure':
+    elif args.kernel == '32Structure':
         kern = gpkernel.StructureMaternKernel(contacts, '3/2')
-    elif args.kernel == '5/2Structure':
+    elif args.kernel == '52Structure':
         kern = gpkernel.StructureMaternKernel(contacts, '5/2')
-    elif args.kernel == '3/2Hamming':
+    elif args.kernel == '32Hamming':
         kern = gpkernel.HammingMaternKernel(contacts, '3/2')
-    elif args.kernel == '5/2Hamming':
+    elif args.kernel == '52Hamming':
         kern = gpkernel.HammingMaternKernel(contacts, '5/2')
     elif args.kernel == 'SEStructure':
         kern = gpkernel.StructureSEKernel(contacts)
@@ -131,7 +131,7 @@ def main ():
             r1 = stats.rankdata(actual)
             r2 = stats.rankdata(predicted)
             print 'tau = %.4f' %stats.kendalltau(r1, r2).correlation
-
+            print 'R = %.4f' %np.corrcoef(model.normed_Y, LOOs['mu'])[0,1]
             gptools.plot_predictions(actual, predicted,
                                      label=args.y_column)
             parents = ['c1c2', 'cschrimson', 'cheriff']
@@ -141,10 +141,8 @@ def main ():
                 pr = predicted[p]
                 plt.plot (a, pr, '.', color=c)
             plt.title(args.kernel + ' model')
-            print 'R = %.4f' %np.corrcoef(model.normed_Y, LOOs['mu'])[0,1]
+            plt.margins(0.02)
             if args.name is not None:
-#                 plt.savefig('plots/' + args.kernel + \
-#                             '_model_' + args.y_column + '_LOO.pdf')
                 plt.savefig('plots/'+name+'_LOO.pdf')
                 with open(os.path.join(dir,'LOO_results/'+name+'_LOO.txt'),'w') as f:
                     f.write('name,mu,var,y\n')
@@ -167,8 +165,8 @@ def main ():
                 plt.title ('ROC for ' + args.y_column + \
                            ' with ' + args.kernel + ' model')
                 plt.savefig('plots/'+name+'_ROC.pdf')
-
-        plt.show()
+        if args.name is not None:
+            plt.show()
 
 
 if __name__ == "__main__":
