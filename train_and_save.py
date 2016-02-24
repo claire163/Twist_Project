@@ -19,7 +19,7 @@ from collections import namedtuple
 def main ():
     dir = os.path.dirname(__file__)
     parser = argparse.ArgumentParser()
-    parser.add_argument('-k', '--kernel',required=True)
+    parser.add_argument('-k', '--kernel',required=True, nargs='*')
     parser.add_argument('-t', '--training',required=True)
     parser.add_argument('-n', '--name',default=None)
     parser.add_argument('-y', '--y_column',required=True)
@@ -37,26 +37,33 @@ def main ():
     dict_file = os.path.join(dir,'dict.xlsx')
 
     print 'Creating kernel...'
-    if args.kernel in ['hamming', 'n_code', 'c_code', 'subblock']:
-        kern = gpkernel.HammingKernel()
-    elif args.kernel == 'WHamming':
-        kern = gpkernel.WeightedHammingKernel()
-    elif args.kernel == 'structure':
-        kern = gpkernel.StructureKernel(contacts)
-    elif args.kernel == '32Structure':
-        kern = gpkernel.StructureMaternKernel(contacts, '3/2')
-    elif args.kernel == '52Structure':
-        kern = gpkernel.StructureMaternKernel(contacts, '5/2')
-    elif args.kernel == '32Hamming':
-        kern = gpkernel.HammingMaternKernel(contacts, '3/2')
-    elif args.kernel == '52Hamming':
-        kern = gpkernel.HammingMaternKernel(contacts, '5/2')
-    elif args.kernel == 'SEStructure':
-        kern = gpkernel.StructureSEKernel(contacts)
-    elif args.kernel in ['SEHamming', 'SEn_code', 'SEc_code', 'SEsubblock']:
-        kern = gpkernel.HammingSEKernel()
+    kerns = []
+    for k in args.kernel:
+        if k in ['hamming', 'n_code', 'c_code', 'subblock']:
+            kern = gpkernel.HammingKernel()
+        elif k == 'WHamming':
+            kern = gpkernel.WeightedHammingKernel()
+        elif k == 'structure':
+            kern = gpkernel.StructureKernel(contacts)
+        elif k == '32Structure':
+            kern = gpkernel.StructureMaternKernel(contacts, '3/2')
+        elif k == '52Structure':
+            kern = gpkernel.StructureMaternKernel(contacts, '5/2')
+        elif k == '32Hamming':
+            kern = gpkernel.HammingMaternKernel(contacts, '3/2')
+        elif k == '52Hamming':
+            kern = gpkernel.HammingMaternKernel(contacts, '5/2')
+        elif k == 'SEStructure':
+            kern = gpkernel.StructureSEKernel(contacts)
+        elif k in ['SEHamming', 'SEn_code', 'SEc_code', 'SEsubblock']:
+            kern = gpkernel.HammingSEKernel()
+        else:
+            raise ValueError('Invalid kernel type: ' + k)
+        kerns.append(kern)
+    if len(kerns) == 1:
+        kern = kerns[0]
     else:
-        sys.exit ('Invalid kernel type')
+        kern = gpkernel.SumKernel(kerns)
 
 
     print 'Creating training set...'
@@ -116,7 +123,8 @@ def main ():
     if args.name is not None:
         print 'Pickling model...'
         dt = datetime.date.today()
-        name = str(dt) + '_' + args.name + '_' + args.y_column + '_' + args.kernel
+        name = str(dt) + '_' + args.name + '_'
+        name += args.y_column + '_' + '_'.join(args.kernel)
         model.dump(os.path.join(dir, name + '_dict.pkl'))
 
 
@@ -140,7 +148,6 @@ def main ():
                 a = actual[p]
                 pr = predicted[p]
                 plt.plot (a, pr, '.', color=c)
-            plt.title(args.kernel + ' model')
             plt.margins(0.02)
             if args.name is not None:
                 plt.savefig('plots/'+name+'_LOO.pdf')
@@ -162,8 +169,6 @@ def main ():
                     f.write ('name,'+args.y_column+ ',pi\n')
                     for n, r, p in zip (model.Y.index, model.Y, preds):
                         f.write (n + ',' + str(r) + ',' + str(p) + '\n')
-                plt.title ('ROC for ' + args.y_column + \
-                           ' with ' + args.kernel + ' model')
                 plt.savefig('plots/'+name+'_ROC.pdf')
         if args.name is not None:
             plt.show()
