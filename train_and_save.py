@@ -15,6 +15,8 @@ import numpy as np
 import datetime
 from scipy import stats
 from collections import namedtuple
+from sklearn import metrics
+
 
 def main ():
     dir = os.path.dirname(__file__)
@@ -114,11 +116,27 @@ def main ():
                             objective=args.objective)
     model.fit(X_seqs, Ys)
     print model.hypers
-    print '-log_ML = %f' %model.ML
+    print 'log_ML = %f' %-model.ML
     try:
-        print '-log_LOO_P = %f' %model.log_p
+        print 'log_LOO_P = %f' %-model.log_p
     except:
         pass
+
+    if model.regr:
+        LOOs = model.LOO_res (model.hypers)
+        predicted = model.unnormalize(LOOs['mu'])
+        var = model.std**2*LOOs['v']
+        actual = model.Y
+        r1 = stats.rankdata(actual)
+        r2 = stats.rankdata(predicted)
+        print 'tau = %.4f' %stats.kendalltau(r1, r2).correlation
+        print 'R = %.4f' %np.corrcoef(model.normed_Y, LOOs['mu'])[0,1]
+    else:
+        preds = model.predicts(model.X_seqs)
+        preds = [p[0] for p in preds]
+        fpr, tpr, _ = metrics.roc_curve(model.Y, preds)
+        auc = metrics.auc(fpr,tpr)
+        print 'AUC = %.4f' %auc
 
     if args.name is not None:
         print 'Pickling model...'
@@ -127,19 +145,9 @@ def main ():
         name += args.y_column + '_' + '_'.join(args.kernel)
         model.dump(os.path.join(dir, name + '_dict.pkl'))
 
-
     if args.plot:
         print 'Making LOO plot...'
-
         if model.regr:
-            LOOs = model.LOO_res (model.hypers)
-            predicted = model.unnormalize(LOOs['mu'])
-            var = model.std**2*LOOs['v']
-            actual = model.Y
-            r1 = stats.rankdata(actual)
-            r2 = stats.rankdata(predicted)
-            print 'tau = %.4f' %stats.kendalltau(r1, r2).correlation
-            print 'R = %.4f' %np.corrcoef(model.normed_Y, LOOs['mu'])[0,1]
             gptools.plot_predictions(actual, predicted,
                                      label=args.y_column)
             parents = ['c1c2', 'cschrimson', 'cheriff']
@@ -159,18 +167,14 @@ def main ():
                         f.write('\n')
 
         else:
-            preds = model.predicts(model.X_seqs)
-            preds = [p[0] for p in preds]
             auc = gptools.plot_ROC(model.Y, preds)
-            print 'AUC = %.4f' %auc
-
             if args.name is not None:
                 with open ('LOO_results/' + name + '_res.txt', 'w') as f:
                     f.write ('name,'+args.y_column+ ',pi\n')
                     for n, r, p in zip (model.Y.index, model.Y, preds):
                         f.write (n + ',' + str(r) + ',' + str(p) + '\n')
                 plt.savefig('plots/'+name+'_ROC.pdf')
-        if args.name is not None:
+        if args.name is None:
             plt.show()
 
 
