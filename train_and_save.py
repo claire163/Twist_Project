@@ -5,6 +5,7 @@ python2 train_and_save.py -k structure -t res.xlsx -n name
 
 '''
 import sys
+sys.path.append('/Users/kevinyang/Documents/Projects/GPModel')
 sys.path.append ('/Users/seinchin/Documents/Caltech/Arnold Lab/Programming tools/GPModel')
 import argparse, gpmodel, gpkernel, os, gptools
 import dill as pickle
