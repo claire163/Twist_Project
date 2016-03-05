@@ -83,7 +83,7 @@ def main():
     if model.regr:
         head = 'code,mean,variance\n'
     else:
-        head = 'code,pi\n'
+        head = 'code,pi,f_bar,variance\n'
 
     double_write(head, p=args.pr, w = out_file)
 
