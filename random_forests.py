@@ -35,10 +35,10 @@ def normalize(data):
     s = data.std()
     return (data-m) / s
 
-y_c = 'log_gfp'
+y_c = 'log_kinetics'
 dt = str(datetime.date.today())
 
-n = 500
+n = 100
 name = dt + '_struct_X_Y_' + y_c
 print "Trying to load X and Y..."
 try:
@@ -47,7 +47,7 @@ try:
         print '\t success!'
 except:
     print 'Building X and Y...'
-    with open('2015-12-07_all_res.pkl') as f:
+    with open('2016-03-21_data/props.pkl') as f:
         df = pickle.load(f)
     a_and_c = 'alignment_and_contacts.pkl'
     sample_space, contacts = pickle.load(open(a_and_c))
@@ -78,8 +78,8 @@ with open('LOO_results/'+dt+'_random_forest_'+str(n)+'_'+y_c+'_LOO.txt','w') as 
         f.write('\n')
 
 print 'R =', np.corrcoef(np.array(y), Ys)[0][1]
-# print 'validation score:', clf.score(X_test, y_test)
 plt.plot(Ys, y,'k.')
+plt.margins(0.02)
 plt.xlabel('actual ' + y_c)
 plt.ylabel('predicted ' +  y_c)
 plt.savefig('plots/' + dt + '_random_forest_' + str(n) + '_' + y_c + '.pdf')

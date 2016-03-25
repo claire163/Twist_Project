@@ -4,10 +4,12 @@ import pandas as pd
 from sys import exit
 from sklearn import cross_validation
 from sklearn import ensemble
+from sklearn import linear_model
 import chimera_tools
 import cPickle as pickle
 import matplotlib.pyplot as plt
 import os
+import datetime
 
 def code_to_x (code):
     x = np.zeros(len(code)*3)
@@ -35,34 +37,78 @@ def normalize(data):
     return (data-m) / s
 
 
-with open('2015-12-07_all_res.pkl') as f:
-    df = pickle.load(f)
+y_c = 'log_kinetics'
+dt = str(datetime.date.today())
 
-y_c = 'log_gfp'
-a_and_c = 'alignment_and_contacts.pkl'
-sample_space, contacts = pickle.load(open(a_and_c))
+n = 100
+name = dt + '_struct_X_Y_' + y_c
+print "Trying to load X and Y..."
+try:
+    with open(name + '.pkl') as f:
+        Xs, Ys = pickle.load(f)
+        print '\t success!'
+except:
+    print 'Building X and Y...'
+    with open('2016-03-21_data/props.pkl') as f:
+        df = pickle.load(f)
+    a_and_c = 'alignment_and_contacts.pkl'
+    sample_space, contacts = pickle.load(open(a_and_c))
 
-inds = ~np.isnan(df[y_c])
-terms = chimera_tools.contacting_terms(sample_space, contacts)
-Xs = chimera_tools.make_contact_X(df[inds]['sequence'], contacts, terms)
-Ys = df[inds][y_c]
-
-X_train, X_test, y_train, y_test = \
-    cross_validation.train_test_split(Xs, Ys, test_size=0.2)
-
-
-clf = ensemble.RandomForestRegressor(n_estimators=200)
-clf.fit(X_train,y_train)
-y = clf.predict(X_test)
+    inds = ~np.isnan(df[y_c])
+    terms = chimera_tools.contacting_terms(sample_space, contacts)
+    Xs = chimera_tools.make_contact_X(df[inds]['sequence'], contacts, terms)
+    Ys = df[inds][y_c]
+    Ys.index = range(len(Ys))
+    Xs = pd.DataFrame(Xs, index=Ys.index)
+    with open(name + '.pkl', 'wb') as f:
+        pickle.dump((Xs, Ys), f)
 
 
+clf = linear_model.LinearRegression()
+y_c = 'peak_green_ratio'
+dt = str(datetime.date.today())
 
-print 'R =', np.corrcoef(y, y_test)[0][1]
-print 'validation score:', clf.score(X_test, y_test)
-plt.plot(y_test, y,'k.')
-# plt.plot(res[y_c], res['predicted'], 'k.', alpha=0.3)
-# plt.xlabel('actual ' + y_c)
-# plt.ylabel('predicted ' +  y_c)
-# #plt.savefig('plots/2015-12-07_contig_lasso_validation.pdf')
+name = dt + '_struct_X_Y_' + y_c
+print "Trying to load X and Y..."
+try:
+    with open(name + '.pkl') as f:
+        Xs, Ys = pickle.load(f)
+        print '\t success!'
+except:
+    print 'Building X and Y...'
+    with open('2016-03-21_data/props.pkl') as f:
+        df = pickle.load(f)
+    a_and_c = 'alignment_and_contacts.pkl'
+    sample_space, contacts = pickle.load(open(a_and_c))
+
+    inds = ~np.isnan(df[y_c])
+    terms = chimera_tools.contacting_terms(sample_space, contacts)
+    Xs = chimera_tools.make_contact_X(df[inds]['sequence'], contacts, terms)
+    Ys = df[inds][y_c]
+    Ys.index = range(len(Ys))
+    Xs = pd.DataFrame(Xs, index=Ys.index)
+    with open(name + '.pkl', 'wb') as f:
+        pickle.dump((Xs, Ys), f)
+clf = linear_model.BayesianRidge()
+
+y = []
+print 'Generating LOO results...'
+for train, test in cross_validation.LeaveOneOut(len(Xs)):
+    X_train = Xs.loc[train]
+    y_train = Ys.loc[train]
+    X_test = Xs.loc[test]
+    clf.fit(X_train,y_train)
+    y.append(clf.predict(X_test)[0])
+
+with open('LOO_results/'+dt+'_bayesian_ridge_'+'_'+y_c+'_LOO.txt','w') as f:
+    f.write('predicted,actual\n')
+    for p,a in zip(y, Ys):
+        f.write (str(p) + ',' + str(a))
+        f.write('\n')
+print 'R =', np.corrcoef(np.array(y), Ys)[0][1]
+plt.plot(Ys, y,'k.')
+plt.margins(0.02)
+plt.xlabel('actual ' + y_c)
+plt.ylabel('predicted ' +  y_c)
+plt.savefig('plots/' + dt + '_bayesian_ridge_' + '_' + y_c + '.pdf')
 plt.show()
-

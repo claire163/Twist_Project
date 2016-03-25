@@ -53,9 +53,9 @@ def main ():
         elif k == '52Structure':
             kern = gpkernel.StructureMaternKernel(contacts, '5/2')
         elif k == '32Hamming':
-            kern = gpkernel.HammingMaternKernel(contacts, '3/2')
+            kern = gpkernel.HammingMaternKernel('3/2')
         elif k == '52Hamming':
-            kern = gpkernel.HammingMaternKernel(contacts, '5/2')
+            kern = gpkernel.HammingMaternKernel('5/2')
         elif k == 'SEStructure':
             kern = gpkernel.StructureSEKernel(contacts)
         elif k in ['SEHamming', 'SEn_code', 'SEc_code', 'SEsubblock']:
