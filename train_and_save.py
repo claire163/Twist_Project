@@ -144,7 +144,7 @@ def main ():
         dt = datetime.date.today()
         name = str(dt) + '_' + args.name + '_'
         name += args.y_column + '_' + '_'.join(args.kernel)
-        model.dump(os.path.join(dir, name + '_dict.pkl'))
+        model.dump(os.path.join(dir, name + '.pkl'))
 
     if args.plot:
         print 'Making LOO plot...'
