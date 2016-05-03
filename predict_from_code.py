@@ -99,7 +99,6 @@ def main():
         predicted = True
     except:
         pass
-
     if args.code != None:
         # read and predict the code
         double_write(formatted_predict(model, codes_to_seqs([args.code])),

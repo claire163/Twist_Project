@@ -3,6 +3,7 @@ Some tools for working with chimera sequences
 """
 
 import pandas as pd
+import numpy as np
 from sys import exit
 
 def contacting_terms (sample_space, contacts):
@@ -55,7 +56,21 @@ def make_X(seqs, sample_space, contacts):
     struct_X, contact_terms = make_contact_X(seqs, sample_space, contacts)
     X = [seq_X[i] + struct_X[i] for i in range(len(seqs))]
     terms = sequence_terms + contact_terms
-    return X, terms
+    X = np.array(X)
+    columns = [i for i in range(len(terms))]
+    new_terms = []
+    kept_columns = []
+    while len(columns) > 0:
+        current_col = columns.pop(0)
+        kept_columns.append(current_col)
+        current = X[:,current_col]
+        duplicate_cols = [c for c in columns if
+                          np.array_equal(current, X[:,c])]
+        new_terms.append([terms[c] for c in [current_col] + duplicate_cols])
+        for c in duplicate_cols:
+            columns.remove(c)
+    X = X[:, kept_columns]
+    return X, new_terms
 
 def get_contacts(seq, contacts):
     """

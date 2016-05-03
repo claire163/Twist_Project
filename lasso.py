@@ -92,6 +92,7 @@ else:
     weights['weight'] = clf.coef_
     weights['term'] = terms
     weights = weights[~np.isclose(weights['weight'], 0.0)]
+    print weights
     with open(X_name + '_' + args.method + '_weights.csv', 'w') as f:
         weights.to_csv(f)
 
