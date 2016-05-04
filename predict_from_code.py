@@ -39,7 +39,6 @@ def formatted_predict(model, seqs):
         formatted += '\n'
     return formatted
 
-
 def double_write(s, p=False, w=None):
     '''
     Print, write to file, or both
@@ -48,7 +47,6 @@ def double_write(s, p=False, w=None):
         print s
     if w is not None:
         w.write(s)
-
 
 dir = os.path.dirname(__file__)
 parser = argparse.ArgumentParser()
@@ -59,7 +57,6 @@ parser.add_argument('-p', '--pr', action='store_true')
 parser.add_argument('-w', '--write', required=False)
 
 args = parser.parse_args()
-
 
 if args.write:
     out_file = open(os.path.join(dir, args.write), 'w')
