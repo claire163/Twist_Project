@@ -142,8 +142,9 @@ def main ():
     if args.name is not None:
         print 'Pickling model...'
         dt = datetime.date.today()
-        name = str(dt) + '_' + args.name + '_'
-        name += args.y_column + '_' + '_'.join(args.kernel)
+        model_file = args.training.split('_')[0] + '_models/'
+        name = model_file + '_'.join([str(dt), args.name, args.y_column,
+                                      '_'.join(args.kernel)])
         model.dump(os.path.join(dir, name + '.pkl'))
 
     if args.plot:
@@ -159,8 +160,8 @@ def main ():
                 plt.plot (a, pr, '.', color=c)
             plt.margins(0.02)
             if args.name is not None:
-                plt.savefig('plots/'+name+'_LOO.pdf')
-                with open(os.path.join(dir,'LOO_results/'+name+'_LOO.txt'),'w') as f:
+                plt.savefig(name + '_LOO.pdf')
+                with open(os.path.join(dir, name + '_LOO.txt'),'w') as f:
                     f.write('name,mu,var,y\n')
                     for i,n in enumerate(Ys.index):
                         f.write (n+','+str(predicted[n]))
@@ -170,11 +171,11 @@ def main ():
         else:
             auc = gptools.plot_ROC(model.Y, preds)
             if args.name is not None:
-                with open ('LOO_results/' + name + '_res.txt', 'w') as f:
+                with open (name + '_res.txt', 'w') as f:
                     f.write ('name,'+args.y_column+ ',pi\n')
                     for n, r, p in zip (model.Y.index, model.Y, preds):
                         f.write (n + ',' + str(r) + ',' + str(p) + '\n')
-                plt.savefig('plots/'+name+'_ROC.pdf')
+                plt.savefig(name+'_ROC.pdf')
         if args.name is None:
             plt.show()
 
