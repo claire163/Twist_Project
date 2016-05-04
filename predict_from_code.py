@@ -103,12 +103,23 @@ def main():
         predicted = True
 
     if not predicted:
-        print 'Generating and predicting all sequences..'
-        # generate and predict all possible chimeras
-        for c in product([0,1,2],repeat=10):
-            this = ''.join([str(i) for i in c])
-            codes = ['n'+this, 'c'+this]
-            cod = codes_to_seqs(codes)
+         print 'Attempting to load all possible sequences...'
+        try:
+            sequences = pd.read_csv('all_chimeras.txt')
+            sequences.index = xrange(len(sequences))
+            print '\tSuccess!'
+        except:
+            print 'Generating all possible sequences'
+            # generate all possible chimeras
+            # load the assignment dicts for contiguous and non-contiguous
+            sequences = pd.DataFrame()
+            for c in itertools.product([0,1,2],repeat=10):
+                this = ''.join([str(i) for i in c])
+                codes = ['n'+this, 'c'+this]
+                sequences = pd.concat([sequences, codes_to_seqs(codes)])
+            sequences.to_csv('all_chimeras.txt')
+        for i in sequences.index:
+            cod = sequences.iloc[[i]]
             preds = formatted_predict(model,cod)
             double_write(preds,p=args.pr,w=out_file)
     if args.write:
