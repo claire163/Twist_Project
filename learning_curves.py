@@ -1,5 +1,5 @@
 """
-Loads a pickled GPModel and uses it to make predictions (or whatever else)
+Makes a learning curve.
 """
 import sys
 sys.path.append ('/Users/seinchin/Documents/Caltech/Arnold Lab/Programming tools/GPModel')
@@ -10,13 +10,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 from scipy import stats
-from scipy.optimize import minimize
 
 def main():
     dir = os.path.dirname(__file__)
 
     # load the GPModel
-    ms = ['2016-02-02__log_mKate_structure_dict.pkl']
+    ms = ['2016-02-17_models/2016-03-25__log_mKate_structure_dict.pkl',
+         '2016-02-17_models/2016-03-25__log_mKate_SEStructure_dict.pkl',
+         '2016-02-17_models/2016-03-25__log_mKate_32Structure_dict.pkl',
+         '2016-02-17_models/2016-03-25__log_mKate_52Structure_dict.pkl']
          #'2016-02-02__log_mKate_SEStructure_dict.pkl']
     for m in ms:
         print 'loading model...'
@@ -24,26 +26,41 @@ def main():
         print 'doing cv ...'
         X = model.X_seqs
         Y = model.Y
-        taus = []
+        ssw = []
+        for i in X.index:
+            try:
+                j = int(i[1::])
+                if j < 21:
+                    ssw.append(i)
+                elif j > 36 and j < 74:
+                    ssw.append(i)
+            except:
+                ssw.append(i)
+        mi = list(set(X.index) - set(ssw))
+        X_ssw = X.loc[ssw]
+        X_mi = X.loc[mi]
+        Y_ssw = Y.loc[ssw]
+        Y_mi = Y.loc[mi]
         Rs = []
-        ns = range(10,117)
-        for n in ns:
+        ns = range(0, len(mi), 15)
+        ns = ns + [53]
+        for n in ns[::-1]:
             print n
-            predicted, actual = gptools.cv(X, Y, model, n, 10)
-            r1 = stats.rankdata(actual)
-            r2 = stats.rankdata(predicted)
-            taus.append(stats.kendalltau(r1, r2).correlation)
+            predicted, actual = gptools.cv(X_mi, Y_mi, model, n,
+                                           replicates=100,
+                                          X_always=X_ssw,
+                                          Y_always=Y_ssw)
             Rs.append(np.corrcoef(predicted, actual)[0,1])
-            #print taus, Rs
-        plt.plot(ns, taus, '.-', ns, Rs, '.-')
-    plt.xlabel('training set size')
-#     plt.legend(["structure Kendall's Tau",
-#                 'structure R',
-#                "SEStructure Kendall's Tau",
-#                 'SEStructure R'],
-#                loc='best')
-    plt.ylim([0,1])
-    plt.savefig('2016-02-2_log_mKate_mean_learning_curves_1.pdf')
+        plt.plot(ns, Rs[::-1], '.-')
+    plt.xlabel('Number maximally informative in training set')
+    plt.ylabel('R')
+    plt.legend(["linear",
+                'exponential',
+               r"Matern, $\nu=\frac{3}{2}$",
+                r'Matern, $\nu=\frac{5}{2}$'],
+               loc='best')
+    plt.margins(0.02)
+    plt.savefig('plots/log_mKate_mean_learning_curves_3.pdf')
     plt.show()
 
 
