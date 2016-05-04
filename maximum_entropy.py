@@ -44,6 +44,7 @@ def main():
     try:
         sequences = pd.read_csv('all_chimeras.txt')
         sequences.index = xrange(len(sequences))
+        sequences = sequences.drop(sequences.columns[[0]], axis=1)
         print '\tSuccess!'
     except:
         print 'Generating all possible sequences'
@@ -59,10 +60,20 @@ def main():
     #load the model
     print 'Loading the model...'
     model = gpmodel.GPModel.load(args.model)
-
+    kernel = model.kern
+    hypers = model.hypers[1:-1]
+    observations = model.X_seqs
+    # remove observations from sequences
+    for x in observations:
+        x = x.values
+        for s in sequences:
 
     # load the predictions
     predictions = pd.read_csv(args.prediction_file)
+    probabilities = predictions['pi'].values
+
+
+    ent = gpentropy.GPEntropy(kernel, hypers, observations)
 
 if __name__=="__main__":
     main()
