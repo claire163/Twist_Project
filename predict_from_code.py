@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import datetime
-from itertools import product
+import itertools
 
 """ Here, 'code' refers to 'n' or 'c' + (10 digits)"""
 
@@ -103,10 +103,11 @@ def main():
         predicted = True
 
     if not predicted:
-         print 'Attempting to load all possible sequences...'
+        print 'Attempting to load all possible sequences...'
         try:
             sequences = pd.read_csv('all_chimeras.txt')
-            sequences.index = xrange(len(sequences))
+            sequences.index = sequences['Unnamed: 0']
+            sequences = sequences.drop(sequences.columns[[0]], axis=1)
             print '\tSuccess!'
         except:
             print 'Generating all possible sequences'
@@ -119,7 +120,7 @@ def main():
                 sequences = pd.concat([sequences, codes_to_seqs(codes)])
             sequences.to_csv('all_chimeras.txt')
         for i in sequences.index:
-            cod = sequences.iloc[[i]]
+            cod = sequences.loc[[i]]
             preds = formatted_predict(model,cod)
             double_write(preds,p=args.pr,w=out_file)
     if args.write:
