@@ -3,6 +3,7 @@ Some tools for working with chimera sequences
 """
 
 import pandas as pd
+import numpy as np
 from sys import exit
 
 def contacting_terms (sample_space, contacts):
@@ -28,14 +29,48 @@ def contacting_terms (sample_space, contacts):
                 contact_terms.append(((first_pos,aa1),(second_pos,aa2)))
     return contact_terms
 
-def make_contact_X (seqs, contacts, contact_terms):
+def make_contact_X (seqs, sample_space, contacts):
     contact_X = []
+    contact_terms = contacting_terms(sample_space, contacts)
     for seq in seqs:
         cons = get_contacts(seq, contacts)
         inds = [contact_terms.index(c) for c in cons]
         X_row = [1 if i in inds else 0 for i in range(len(contact_terms))]
         contact_X.append(X_row)
-    return contact_X
+    return contact_X, contact_terms
+
+def make_sequence_X(seqs, sample_space):
+    """ Make Xs for regression based on sequence elements."""
+    sequence_X = []
+    sequence_terms = [(i,t) for i,sp in enumerate(sample_space) for t in sp]
+    for seq in seqs:
+        this_terms = [(i,t) for i,t in enumerate(list(seq))]
+        inds = [sequence_terms.index(s) for s in this_terms]
+        X_row = [1 if i in inds else 0 for i in range(len(sequence_terms))]
+        sequence_X.append(X_row)
+    return sequence_X, sequence_terms
+
+def make_X(seqs, sample_space, contacts):
+    """ Make combined sequence/structure X. """
+    seq_X, sequence_terms = make_sequence_X(seqs, sample_space)
+    struct_X, contact_terms = make_contact_X(seqs, sample_space, contacts)
+    X = [seq_X[i] + struct_X[i] for i in range(len(seqs))]
+    terms = sequence_terms + contact_terms
+    X = np.array(X)
+    columns = [i for i in range(len(terms))]
+    new_terms = []
+    kept_columns = []
+    while len(columns) > 0:
+        current_col = columns.pop(0)
+        kept_columns.append(current_col)
+        current = X[:,current_col]
+        duplicate_cols = [c for c in columns if
+                          np.array_equal(current, X[:,c])]
+        new_terms.append([terms[c] for c in [current_col] + duplicate_cols])
+        for c in duplicate_cols:
+            columns.remove(c)
+    X = X[:, kept_columns]
+    return X, new_terms
 
 def get_contacts(seq, contacts):
     """

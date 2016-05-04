@@ -73,6 +73,9 @@ def main():
     cut = df['mKate_mean'].fillna(0).median()
     bin_mKate = [1 if m > cut else -1 for m in df['mKate_mean']]
     df['bin_mKate'] = bin_mKate
+    cut = df['mKate_mean'].dropna().median()
+    bin_mKate = [1 if m > cut else -1 for m in df['mKate_mean']]
+    df['bin_mKate_2'] = bin_mKate
     # make split for GFP
     cut = df['GFP_mean'].fillna(0).median()
     bin_GFP = [1 if g > cut else -1 for g in df['GFP_mean']]

@@ -1,0 +1,4 @@
+*.lprof
+/load_and_play.py
+/load_and_play.py.prof
+*.py.prof
