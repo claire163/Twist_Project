@@ -1,3 +1,4 @@
 *.DS_Store
 /chimera_tools.pyc
 *.pyc
+*.py.lprof

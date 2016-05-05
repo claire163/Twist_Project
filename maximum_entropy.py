@@ -33,8 +33,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--model', required=True)
     parser.add_argument('-l', '--prediction_file', required=True)
+    parser.add_argument('-n', '--n', required=True, type=int)
     parser.add_argument('-p', '--pr', action='store_true')
-    parser.add_argument('-w', '--out_file', required=True)
+    parser.add_argument('-w', '--out_file', required=False)
     args = parser.parse_args()
 
 
@@ -44,6 +45,7 @@ def main():
     try:
         sequences = pd.read_csv('all_chimeras.txt')
         sequences.index = xrange(len(sequences))
+        codes = sequences.iloc[:,0].values
         sequences = sequences.drop(sequences.columns[[0]], axis=1)
         print '\tSuccess!'
     except:
@@ -61,19 +63,36 @@ def main():
     print 'Loading the model...'
     model = gpmodel.GPModel.load(args.model)
     kernel = model.kern
-    hypers = model.hypers[1:-1]
+    vn = model.hypers[0]
+    hypers = model.hypers[1::]
     observations = model.X_seqs
     # remove observations from sequences
-    for x in observations:
-        x = x.values
-        for s in sequences:
-
-    # load the predictions
+    obs_list = [''.join(x) for _, x in observations.iterrows()]
+    seq_list = [''.join(x) for _, x in sequences.iterrows()]
+    seq_list = pd.DataFrame(seq_list, columns=['seq'])
+    keep = ~seq_list['seq'].isin(obs_list)
+    sequences = sequences[keep]
+    print 'Loading probabilities...'
     predictions = pd.read_csv(args.prediction_file)
-    probabilities = predictions['pi'].values
+    probabilities = predictions[keep][['pi']].values
+    print 'Maximizing entropy...'
+    ent = gpentropy.GPEntropy(model=model)
+    selected, H, inds = ent.maximize_expected_entropy(sequences, probabilities, args.n)
+    print selected
+    print H
+    print codes[inds]
+    if args.out_file is not None:
+        with open(args.outfile, 'w') as f:
+            f.write('model:')
+            f.write(args.model + '\n')
+            f.write('probabilities:' + args.prediction_file + '\n')
+            f.write('H=%f' %H)
+            for se, i in zip(selected, inds):
+                f.write('\n')
+                f.write(codes[i])
+                f.write(',')
+                f.write(se)
 
-
-    ent = gpentropy.GPEntropy(kernel, hypers, observations)
 
 if __name__=="__main__":
     main()
