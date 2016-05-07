@@ -32,11 +32,10 @@ sample_space, contacts = pickle.load(open(a_and_c))
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--model', required=True)
-    parser.add_argument('-l', '--prediction_file', required=True)
+    parser.add_argument('-l', '--prediction_file', required=False)
     parser.add_argument('-n', '--n', required=True, type=int)
     parser.add_argument('-p', '--pr', action='store_true')
     parser.add_argument('-w', '--out_file', required=False)
-    parser.add_argument('-c', '--cut', required=False, type=float, default=0)
     args = parser.parse_args()
 
 
@@ -63,9 +62,7 @@ def main():
     #load the model
     print 'Loading the model...'
     model = gpmodel.GPModel.load(args.model)
-    kernel = model.kern
-    vn = model.hypers[0]
-    hypers = model.hypers[1::]
+    print 'Removing observed sequences'
     observations = model.X_seqs
     # remove observations from sequences
     obs_list = [''.join(x) for _, x in observations.iterrows()]
@@ -73,29 +70,23 @@ def main():
     seq_list = pd.DataFrame(seq_list, columns=['seq'])
     keep = ~seq_list['seq'].isin(obs_list)
     sequences = sequences[keep]
-    print 'Loading probabilities...'
-    predictions = pd.read_csv(args.prediction_file)
-    probabilities = predictions[keep][['pi']].values
-    print 'Cutting sequences by probability...'
-    keep = [i for i in range(len(sequences)) if probabilities[i] > args.cut]
-    sequences = sequences.iloc[keep]
-    print 'Maximizing entropy...'
-    ent = gpentropy.GPEntropy(model=model)
-    selected, H, inds = ent.maximize_entropy(sequences, args.n)
+    if args.prediction_file is not None:
+        print 'Loading predictions...'
+        predictions = pd.read_csv(args.prediction_file)
+        probabilities = predictions[keep][['pi']].values
+    print 'Finding max UB sequences...'
+    selected, inds = model.batch_UB_bandit(sequences, n=args.n)
     print selected
-    print H
     print codes[inds]
     if args.out_file is not None:
         with open(args.outfile, 'w') as f:
             f.write('model:')
             f.write(args.model + '\n')
-            f.write('probabilities:' + args.prediction_file + '\n')
-            f.write('H=%f' %H)
             for se, i in zip(selected, inds):
                 f.write('\n')
                 f.write(codes[i])
                 f.write(',')
-                f.write(''.join([s for s in se]))
+                f.write(se)
 
 
 if __name__=="__main__":
