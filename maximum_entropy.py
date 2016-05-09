@@ -46,7 +46,7 @@ def main():
     try:
         sequences = pd.read_csv('all_chimeras.txt')
         sequences.index = xrange(len(sequences))
-        codes = sequences.iloc[:,0].values
+        codes = sequences.iloc[:,0]
         sequences = sequences.drop(sequences.columns[[0]], axis=1)
         print '\tSuccess!'
     except:
@@ -54,10 +54,13 @@ def main():
         # generate all possible chimeras
         # load the assignment dicts for contiguous and non-contiguous
         sequences = pd.DataFrame()
+        codes = []
         for c in itertools.product([0,1,2],repeat=10):
             this = ''.join([str(i) for i in c])
-            codes = ['n'+this, 'c'+this]
-            sequences = pd.concat([sequences, codes_to_seqs(codes)])
+            new_codes = ['n'+this, 'c'+this]
+            codes += new_codes
+            sequences = pd.concat([sequences, codes_to_seqs(new_codes)])
+        codes = pd.Series(codes)
         sequences.to_csv('all_chimeras.txt')
 
     #load the model
@@ -75,25 +78,29 @@ def main():
     sequences = sequences[keep]
     print 'Loading probabilities...'
     predictions = pd.read_csv(args.prediction_file)
-    probabilities = predictions[keep][['pi']].values
+    predictions['code'] = codes
+    data = predictions[keep][['pi','code']].values
     print 'Cutting sequences by probability...'
-    keep = [i for i in range(len(sequences)) if probabilities[i] > args.cut]
+    keep = [i for i in range(len(sequences)) if data[i,0] > args.cut]
+    data = data[keep]
     sequences = sequences.iloc[keep]
+    print len(sequences)
     print 'Maximizing entropy...'
     ent = gpentropy.GPEntropy(model=model)
     selected, H, inds = ent.maximize_entropy(sequences, args.n)
     print selected
     print H
-    print codes[inds]
+    print data[inds,1]
     if args.out_file is not None:
-        with open(args.outfile, 'w') as f:
+        with open(args.out_file, 'w') as f:
             f.write('model:')
             f.write(args.model + '\n')
             f.write('probabilities:' + args.prediction_file + '\n')
             f.write('H=%f' %H)
+            f.write('cutoff=%f' %args.cut)
             for se, i in zip(selected, inds):
                 f.write('\n')
-                f.write(codes[i])
+                f.write(data[i,1])
                 f.write(',')
                 f.write(''.join([s for s in se]))
 
