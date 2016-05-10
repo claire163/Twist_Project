@@ -32,9 +32,9 @@ sample_space, contacts = pickle.load(open(a_and_c))
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--model', required=True)
-    parser.add_argument('-l', '--prediction_file', required=True)
+    parser.add_argument('-l', '--prediction_file', required=False)
+    parser.add_argument('-mm', '--max_mutations', required=False, type=int)
     parser.add_argument('-n', '--n', required=True, type=int)
-    parser.add_argument('-p', '--pr', action='store_true')
     parser.add_argument('-w', '--out_file', required=False)
     parser.add_argument('-c', '--cut', required=False, type=float, default=0)
     args = parser.parse_args()
@@ -66,41 +66,51 @@ def main():
     #load the model
     print 'Loading the model...'
     model = gpmodel.GPModel.load(args.model)
-    kernel = model.kern
-    vn = model.hypers[0]
-    hypers = model.hypers[1::]
     observations = model.X_seqs
     # remove observations from sequences
     obs_list = [''.join(x) for _, x in observations.iterrows()]
     seq_list = [''.join(x) for _, x in sequences.iterrows()]
     seq_list = pd.DataFrame(seq_list, columns=['seq'])
-    keep = ~seq_list['seq'].isin(obs_list)
-    sequences = sequences[keep]
-    print 'Loading probabilities...'
-    predictions = pd.read_csv(args.prediction_file)
-    predictions['code'] = codes
-    data = predictions[keep][['pi','code']].values
-    print 'Cutting sequences by probability...'
-    keep = [i for i in range(len(sequences)) if data[i,0] > args.cut]
-    data = data[keep]
-    sequences = sequences.iloc[keep]
-    print len(sequences)
+    not_obs = ~seq_list['seq'].isin(obs_list)
+    sequences = sequences[not_obs]
+    if args.prediction_file is not None:
+        print 'Loading probabilities...'
+        predictions = pd.read_csv(args.prediction_file)
+        predictions['code'] = codes
+        data = predictions[not_obs][['pi','code']].values
+        print 'Cutting sequences by probability...'
+        keep = [i for i in range(len(sequences)) if data[i,0] > args.cut]
+        data = data[keep]
+        sequences = sequences.iloc[keep]
+        code = data['code']
+        print len(sequences)
+    if args.max_mutations is not None:
+        print 'Cutting by maximum number of mutations...'
+        mutations = pd.read_csv('chimera_mutations.txt')
+        mutations = mutations[not_obs]
+        if args.prediction_file is not None:
+            mutations = mutations[mutations['code']].isin(data['code'])
+        keep = mutations['n_mutations'] < args.max_mutations
+        sequences = sequences[keep]
+        code = mutations[keep]['code'].values
+
     print 'Maximizing entropy...'
     ent = gpentropy.GPEntropy(model=model)
     selected, H, inds = ent.maximize_entropy(sequences, args.n)
-    print selected
+    print [''.join(s) for s in selected]
     print H
-    print data[inds,1]
+    print code[inds]
     if args.out_file is not None:
         with open(args.out_file, 'w') as f:
             f.write('model:')
             f.write(args.model + '\n')
-            f.write('probabilities:' + args.prediction_file + '\n')
-            f.write('H=%f' %H)
-            f.write('cutoff=%f' %args.cut)
+            f.write('probabilities:' + str(args.prediction_file) + '\n')
+            f.write('H=%f\n' %H)
+            f.write('cutoff=%f\n' %args.cut)
+            f.write('max_mutations=%d' %args.max_mutations)
             for se, i in zip(selected, inds):
                 f.write('\n')
-                f.write(data[i,1])
+                f.write(code[i])
                 f.write(',')
                 f.write(''.join([s for s in se]))
 
