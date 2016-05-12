@@ -53,7 +53,7 @@ def main():
     for name in df['name']:
         if name[0] in set(['n', 'N']):
             seqs.append(''.join(chimera_tools.make_sequence(name_dict[name], n_assignments_dict, sample_space)))
-        else:
+        elif name[0] in set(['c', 'C']):
             seqs.append(''.join(chimera_tools.make_sequence(name_dict[name], c_assignments_dict, sample_space)))
     df['sequence'] = seqs
 
