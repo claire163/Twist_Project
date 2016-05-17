@@ -83,9 +83,13 @@ def get_contacts(seq, contacts):
     return cons
 
 def load_assignments (assignments_file):
-    assignments_line = [l for l in open(assignments_file).read().split('\n') if len(l)>0 and l[0]!='#']
-    assignment = [ord(l.split('\t')[2]) - ord('A') for l in assignments_line if l.split('\t')[2] !='-']
-    nodes_outputfile = [int(l.split('\t')[1])-1 for l in assignments_line if l.split('\t')[2] !='-'] # -1 because counting 0,1,2...
+    """ Convert a SCHEMA assignment file to a dict mapping pos:block. """
+    assignments_line = [l for l in open(assignments_file).read().split('\n')
+                        if len(l)>0 and l[0]!='#']
+    assignment = [ord(l.split('\t')[2]) - ord('A') for l in assignments_line
+                  if l.split('\t')[2] !='-']
+    nodes_outputfile = [int(l.split('\t')[1])-1 for l in assignments_line
+                        if l.split('\t')[2] !='-'] # -1 because counting 0,1,2...
     return dict(zip(nodes_outputfile,assignment))
 
 def make_sequence (code, assignments_dict, sample_space):
@@ -101,6 +105,38 @@ def make_sequence (code, assignments_dict, sample_space):
             parent = 0
         seq.append (aa[parent])
     return seq
+
+def substitute_blocks(sequence, blocks, assignments_dict, sample_space):
+    """ Substitute chimeric blocks into a sequence.
+
+    Parameters:
+        sequence (iterable): original sequence
+        blocks (iterable): each term in blocks should be tuple (p,b)
+            where p is the parent id and b is the block id
+        assignments_dict (dict): dict mapping sequence position to block
+        sample_space (iterable): ith term should be a tuple listing the
+            parental residues at the ith position.
+
+    Returns:
+        new_seq (string)
+    """
+    if len(sequence) != len(sample_space):
+        raise ValueError('sequence and sample_space must have the same length')
+    new_seq = []
+    block_ids = [b for _,b in blocks]
+    parent_ids = [p for p,_ in blocks]
+    for i,s in enumerate(sequence):
+        try:
+            current_block = assignments_dict[i]
+        except KeyError:
+            current_block = -1
+        if current_block in block_ids:
+            parent = parent_ids[block_ids.index(current_block)]
+            new_seq.append(sample_space[i][parent])
+        else:
+            new_seq.append(s)
+    return ''.join(new_seq)
+
 
 def make_name_dict(dict_file):
     '''
