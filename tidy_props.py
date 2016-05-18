@@ -6,6 +6,8 @@ and writes it to a csv.
 import pandas as pd
 import argparse
 import os
+sys.path.append('/Users/kevinyang/Documents/Projects/GPModel')
+sys.path.append ('/Users/seinchin/Documents/Caltech/Arnold Lab/Programming tools/GPModel')
 import chimera_tools
 import pickle
 from sys import exit
