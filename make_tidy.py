@@ -22,12 +22,12 @@ def split(df, column_name, how):
             bin_ = [np.nan if np.isnan(r) else
                     1 if r > cut else -1
                     for r in df[column_name]]
-            df['bin_' + column_name] = bin_
+            df['bin_' + column_name.split('_mean')[0]] = bin_
         elif how == 'parents':
             parents = ['cschrimson', 'cheriff', 'c1c2']
             cut = min(df[df['name'].isin(parents)][column_name].values)
             bin_ = [1 if m >= cut else -1 for m in df[column_name]]
-            df[column_name + '_above_parent'] = bin_
+            df[column_name.split('_mean')[0] + '_above_parent'] = bin_
     except KeyError:
         pass
 
