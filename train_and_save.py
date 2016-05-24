@@ -7,7 +7,7 @@ python2 train_and_save.py -k structure -t res.xlsx -n name
 import sys
 sys.path.append('/Users/kevinyang/Documents/Projects/GPModel')
 sys.path.append ('/Users/seinchin/Documents/Caltech/Arnold Lab/Programming tools/GPModel')
-import argparse, gpmodel, gpkernel, os, gptools
+import argparse, gpmodel, gpkernel, os, gptools, gpmean
 import dill as pickle
 from chimera_tools import *
 import matplotlib.pyplot as plt
@@ -16,13 +16,14 @@ import numpy as np
 import datetime
 from scipy import stats
 from collections import namedtuple
-from sklearn import metrics
+from sklearn import metrics, linear_model
 
 
 def main ():
     dir = os.path.dirname(__file__)
     parser = argparse.ArgumentParser()
     parser.add_argument('-k', '--kernel',required=True, nargs='*')
+    parser.add_argument('-a', '--alpha', required=False, type=float)
     parser.add_argument('-t', '--training',required=True)
     parser.add_argument('-n', '--name',default=None)
     parser.add_argument('-y', '--y_column',required=True)
@@ -112,9 +113,18 @@ def main ():
 
 
     print 'Training model...'
-    model = gpmodel.GPModel(kern,
-                            guesses=args.guess,
-                            objective=args.objective)
+    if args.alpha is not None:
+        clf = linear_model.Lasso
+        mf = gpmean.StructureSequenceMean(sample_space, contacts,
+                                          clf, alpha=args.alpha)
+        model = gpmodel.GPModel(kern,
+                                guesses=args.guess,
+                                mean_func=mf,
+                                objective=args.objective)
+    else:
+        model = gpmodel.GPModel(kern,
+                                guesses=args.guess,
+                                objective=args.objective)
     model.fit(X_seqs, Ys)
     print model.hypers
     print 'log_ML = %f' %-model.ML
@@ -124,14 +134,14 @@ def main ():
         pass
 
     if model.regr:
-        LOOs = model.LOO_res (model.hypers)
-        predicted = model.unnormalize(LOOs['mu'])
-        var = model.std**2*LOOs['v']
+        LOOs = model.LOO_res (model.hypers, add_mean=True)
         actual = model.Y
+        predicted = LOOs['mu']
+        var = LOOs['v']
         r1 = stats.rankdata(actual)
         r2 = stats.rankdata(predicted)
         print 'tau = %.4f' %stats.kendalltau(r1, r2).correlation
-        print 'R = %.4f' %np.corrcoef(model.normed_Y, LOOs['mu'])[0,1]
+        print 'R = %.4f' %np.corrcoef(actual, predicted)[0,1]
     else:
         preds = model.predicts(model.X_seqs)
         preds = [p[0] for p in preds]
