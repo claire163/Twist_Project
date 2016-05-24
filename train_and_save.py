@@ -23,7 +23,7 @@ def main ():
     dir = os.path.dirname(__file__)
     parser = argparse.ArgumentParser()
     parser.add_argument('-k', '--kernel',required=True, nargs='*')
-    parser.add_argument('-a', '--alpha', required=False, type=float)
+    parser.add_argument('-a', '--alpha', action='store_true')
     parser.add_argument('-t', '--training',required=True)
     parser.add_argument('-n', '--name',default=None)
     parser.add_argument('-y', '--y_column',required=True)
@@ -113,10 +113,10 @@ def main ():
 
 
     print 'Training model...'
-    if args.alpha is not None:
-        clf = linear_model.Lasso
+    if args.alpha:
+        clf = linear_model.BayesianRidge
         mf = gpmean.StructureSequenceMean(sample_space, contacts,
-                                          clf, alpha=args.alpha)
+                                          clf)
         model = gpmodel.GPModel(kern,
                                 guesses=args.guess,
                                 mean_func=mf,
@@ -135,13 +135,16 @@ def main ():
 
     if model.regr:
         LOOs = model.LOO_res (model.hypers, add_mean=True)
-        actual = model.Y
+        actual = Ys
         predicted = LOOs['mu']
         var = LOOs['v']
         r1 = stats.rankdata(actual)
         r2 = stats.rankdata(predicted)
         print 'tau = %.4f' %stats.kendalltau(r1, r2).correlation
         print 'R = %.4f' %np.corrcoef(actual, predicted)[0,1]
+        if args.alpha:
+            print 'R_lin = %.4f' %np.corrcoef(actual,
+                                              model.mean_func.means)[0,1]
     else:
         preds = model.predicts(model.X_seqs)
         preds = [p[0] for p in preds]
