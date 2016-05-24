@@ -6,6 +6,7 @@ and writes it to a csv.
 import pandas as pd
 import argparse
 import os
+import sys
 sys.path.append('/Users/kevinyang/Documents/Projects/GPModel')
 sys.path.append ('/Users/seinchin/Documents/Caltech/Arnold Lab/Programming tools/GPModel')
 import chimera_tools
@@ -14,15 +15,33 @@ from sklearn.cluster import KMeans
 from sys import exit
 import numpy as np
 
+def split(df, column_name, how):
+    try:
+        if how == 'median':
+            cut = df[column_name].dropna().median()
+            bin_ = [np.nan if np.isnan(r) else
+                    1 if r > cut else -1
+                    for r in df[column_name]]
+            df['bin_' + column_name] = bin_
+        elif how == 'parents':
+            parents = ['cschrimson', 'cheriff', 'c1c2']
+            cut = min(df[df['name'].isin(parents)][column_name].values)
+            bin_ = [1 if m >= cut else -1 for m in df[column_name]]
+            df[column_name + '_above_parent'] = bin_
+    except KeyError:
+        pass
 
 def main():
     dir = os.path.dirname(__file__)
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--name',required=True)
+    parser.add_argument('-c', '--min_cells', required=False, type=int)
 
     args = parser.parse_args()
 
     df = pd.read_excel(args.name)
+    if args.min_cells is not None:
+        df = df[df['cell'] > args.min_cells]
     # make names lowercase
     df['name'] = [s.lower() for s in df['name']]
 
@@ -63,52 +82,13 @@ def main():
     df['log_mKate'] = np.log(df['mKate_mean'])
     df['log_GFP'] = np.log(df['GFP_mean'])
 
-#     # calculate percentage of residues in common with each parent
-#     parent_names = ['c1c2', 'cschrimson', 'cheriff']
-#     for pn in parent_names:
-#         parent_index = df['name'] == pn
-#         parent = df[parent_index]['sequence']
-#         df[pn+'_fraction'] = [identity(parent.item(),s) for s in df['sequence']]
-
-    # make split for mkate_mean
-    cut = df['mKate_mean'].fillna(0).median()
-    bin_mKate = [1 if m > cut else -1 for m in df['mKate_mean']]
-    df['bin_mKate_2'] = bin_mKate
-    cut = df['mKate_mean'].dropna().median()
-    bin_mKate = [np.nan if np.isnan(r) else\
-                     1 if r > cut else -1 for r in df['mKate_mean']]
-    df['bin_mKate'] = bin_mKate
-    # make split for GFP
-    cut = df['GFP_mean'].dropna().median()
-    bin_GFP = [np.nan if np.isnan(r) else\
-                     1 if r > cut else -1 for r in df['GFP_mean']]
-    df['bin_GFP'] = bin_GFP
-    # make split for sum_ratio
-    cut = df['sum_ratio'].dropna().median()
-    bin_sum_ratio = [np.nan if np.isnan(r) else\
-                     1 if r > cut else -1 for r in df['sum_ratio']]
-    df['bin_sum_ratio'] = bin_sum_ratio
-    # make split for intensity_ratio
-    cut = df['intensity_ratio'].dropna().median()
-    bin_intensity_ratio = [np.nan if np.isnan(r) else\
-                     1 if r > cut else -1 for r in df['intensity_ratio']]
-    df['bin_intensity_ratio'] = bin_intensity_ratio
-
-    cut = df[df['name']=='cheriff']['mKate_mean'].values
-    above_parent = [1 if m >= cut else -1 for m in df['mKate_mean']]
-    df['mKate_above_parent'] = above_parent
-
-    cut = df[df['name']=='c1c2']['GFP_mean'].values
-    above_parent = [1 if m >= cut else -1 for m in df['GFP_mean']]
-    df['GFP_above_parent'] = above_parent
-
-    cut = df[df['name']=='c1c2']['sum_ratio'].values
-    above_parent = [1 if m >= cut else -1 for m in df['sum_ratio']]
-    df['sum_ratio_above_parent'] = above_parent
-
-    cut = df[df['name']=='c1c2']['intensity_ratio'].values
-    above_parent = [1 if m >= cut else -1 for m in df['intensity_ratio']]
-    df['intensity_ratio_above_parent'] = above_parent
+    # make binary splits
+    split_me = ['mKate_mean', 'GFP_mean', 'sum_ratio',
+                'intensity_ratio', 'cell_ratio']
+    hows = ['median', 'parents']
+    for sp in split_me:
+        for how in hows:
+            split(df, sp, how=how)
 
     # pickle
     with open(os.path.join(dir, args.name.split('/')[0]
