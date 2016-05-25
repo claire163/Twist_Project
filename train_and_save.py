@@ -140,8 +140,10 @@ def main ():
         var = LOOs['v']
         r1 = stats.rankdata(actual)
         r2 = stats.rankdata(predicted)
-        print 'tau = %.4f' %stats.kendalltau(r1, r2).correlation
-        print 'R = %.4f' %np.corrcoef(actual, predicted)[0,1]
+        tau = stats.kendalltau(r1, r2).correlation
+        R = np.corrcoef(actual, predicted)[0,1]
+        print 'tau = %.4f' %tau
+        print 'R = %.4f' %R
         if args.alpha:
             print 'R_lin = %.4f' %np.corrcoef(actual,
                                               model.mean_func.means)[0,1]
@@ -191,6 +193,24 @@ def main ():
                 plt.savefig(name+'_ROC.pdf')
         if args.name is None:
             plt.show()
+    print 'Saving model results...'
+    k = ' '.join(args.kernel)
+    if model.regr:
+        save_me = [k, args.y_column, str(-model.ML),
+                   str(-model.log_p), str(R), str(tau),
+                   '',str(model.hypers), 'no',
+                   str(args.name is not None)]
+    else:
+        save_me = [k, args.y_column, str(-model.ML),
+                   '',str(auc), str(model.hypers), 'no',
+                   str(args.name is not None)]
+    with open(args.training.split('/')[0] + '/models.csv', 'r') as f:
+        lines = [','.join(ell.split(',')[0:-2]) for ell in f.readlines()]
+    if not ','.join(save_me[0:-2]) in lines:
+        with open(args.training.split('/')[0] + '/models.csv', 'a') as f:
+            f.write('\n' + ','.join(save_me))
+
+
 
 
 if __name__ == "__main__":
