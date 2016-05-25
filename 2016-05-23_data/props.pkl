@@ -95,13 +95,13 @@ aS'log_mKate'
 p44
 aS'log_GFP'
 p45
-aS'bin_mKate_mean'
+aS'bin_mKate'
 p46
-aS'mKate_mean_above_parent'
+aS'mKate_above_parent'
 p47
-aS'bin_GFP_mean'
+aS'bin_GFP'
 p48
-aS'GFP_mean_above_parent'
+aS'GFP_above_parent'
 p49
 aS'bin_cell_ratio'
 p50
