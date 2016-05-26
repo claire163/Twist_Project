@@ -27,6 +27,7 @@ def main ():
     parser.add_argument('-t', '--training',required=True)
     parser.add_argument('-n', '--name',default=None)
     parser.add_argument('-y', '--y_column',required=True)
+    parser.add_argument('-s', '--std_column', required=False)
     parser.add_argument('-p', '--plot', action='store_true')
     parser.add_argument('-d', '--drop',required=False, type=float)
     parser.add_argument('-g', '--guess', nargs='*', required=False)
@@ -99,6 +100,13 @@ def main ():
         Ys = Ys.fillna(args.drop)
     Ys.index = train_df[not_dropped]['name']
 
+    # make the variances
+    if args.std_column is not None:
+        variances = train_df[not_dropped][args.std_column] ** 2
+        variances.index = Ys.index
+    else:
+        variances = None
+
     # make the X_seqs
     if args.kernel in ['SEn_code', 'SEc_code', 'n_code', 'c_code']:
         s = 'code'
@@ -109,7 +117,7 @@ def main ():
 
 
     X_seqs = [list(seq) for seq in train_df[not_dropped][s]]
-    X_seqs = pd.DataFrame(X_seqs, index = Ys.index)
+    X_seqs = pd.DataFrame(X_seqs, index=Ys.index)
 
 
     print 'Training model...'
@@ -125,7 +133,7 @@ def main ():
         model = gpmodel.GPModel(kern,
                                 guesses=args.guess,
                                 objective=args.objective)
-    model.fit(X_seqs, Ys)
+    model.fit(X_seqs, Ys, variances=variances)
     print model.hypers
     print 'log_ML = %f' %-model.ML
     try:
@@ -144,6 +152,10 @@ def main ():
         R = np.corrcoef(actual, predicted)[0,1]
         print 'tau = %.4f' %tau
         print 'R = %.4f' %R
+        try:
+            print 'avg var = %0.4f' %np.mean(model.variances)
+        except TypeError:
+            pass
         if args.alpha:
             print 'R_lin = %.4f' %np.corrcoef(actual,
                                               model.mean_func.means)[0,1]
@@ -210,9 +222,6 @@ def main ():
     if not ','.join(save_me[0:-2]) in lines:
         with open(args.training.split('/')[0] + '/models.csv', 'a') as f:
             f.write('\n' + ','.join(save_me))
-
-
-
 
 if __name__ == "__main__":
     main()
