@@ -6,6 +6,7 @@ from sklearn import cross_validation
 from sklearn import grid_search
 from sklearn import ensemble
 from sklearn import linear_model
+import sys
 sys.path.append('/Users/kevinyang/Documents/Projects/GPModel')
 sys.path.append ('/Users/seinchin/Documents/Caltech/Arnold Lab/Programming tools/GPModel')
 import chimera_tools

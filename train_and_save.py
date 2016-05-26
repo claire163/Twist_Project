@@ -157,7 +157,7 @@ def main ():
     if args.name is not None:
         print 'Pickling model...'
         dt = datetime.date.today()
-        model_file = args.training.split('_')[0] + '_models/'
+        model_file = args.training.split('/')[0] + '/models/'
         name = model_file + '_'.join([str(dt), args.name, args.y_column,
                                       '_'.join(args.kernel)])
         model.dump(os.path.join(dir, name + '.pkl'))
@@ -198,11 +198,12 @@ def main ():
     if model.regr:
         save_me = [k, args.y_column, str(-model.ML),
                    str(-model.log_p), str(R), str(tau),
-                   '',str(model.hypers), 'no',
+                   '', ' '.join(str(model.hypers).split(',')), 'no',
                    str(args.name is not None)]
     else:
         save_me = [k, args.y_column, str(-model.ML),
-                   '',str(auc), str(model.hypers), 'no',
+                   '', '', '',str(auc),
+                   ' '.join(str(model.hypers).split(',')), 'no',
                    str(args.name is not None)]
     with open(args.training.split('/')[0] + '/models.csv', 'r') as f:
         lines = [','.join(ell.split(',')[0:-2]) for ell in f.readlines()]

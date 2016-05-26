@@ -1,8 +1,0 @@
-kernel,y,log_ML,LOO_log_P,R,tau,AUC,hypers,Predicted?,Saved?
-structure,mKate_above_parent,-78.363504,,,,0.8848,Hypers(var_p=3.170321518600737),no,no
-structure,GFP_above_parent,-92.330488,,,,0.7745,Hypers(var_p=1.9417871707141727),no,no
-structure,sum_ratio_above_parent,-109.162372,,,,0.7654,Hypers(var_p=1.1918516352884139),no,no
-structure,intensity_ratio_above_parent,-114.522236,,,,0.7682,Hypers(var_p=0.95329115715745327),no,no
-SEStructure,GFP_above_parent,-86.289493,,,,0.9947,"Hypers(sigma_f=3.7429866879869977, ell=15.931884871613327)",no,yes
-structure,log_mKate,-173.193781,-162.935576,0.7456,0.55,,"Hypers(var_n=0.37029983842227193, var_p=0.75353899396884505)",no,no
-52Structure,GFP_above_parent,-91.108424,,,,0.8855,Hypers(ell=20.556745873882871),no,no
