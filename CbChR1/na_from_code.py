@@ -7,6 +7,7 @@ import argparse
 import cPickle as pickle
 from chimera_tools import make_sequence, load_assignments, translate
 import pandas as pd
+from scipy.stats import mode
 
 def main():
     parser = argparse.ArgumentParser()
@@ -50,9 +51,15 @@ def main():
                                                   =='cbchr1']['sequence'].values[0]
     assert ''.join([aa[4] for aa in na_ss]) == df[df['name']
                                                   =='cscbchr1']['sequence'].values[0]
+    assert ''.join([aa[1] for aa in na_ss]) == df[df['name']
+                                                  =='c1c2']['sequence'].values[0]
     print 'Generating sequences...'
     new_df = pd.DataFrame(args.codes, columns=['code'])
-    new_df['na_seq'] = [''.join(make_sequence(code[1::], assign[code[0]], na_ss))
+    new_df['na_seq'] = [''.join(make_sequence(code[1::],
+                                              assign[code[0]],
+                                              na_ss,
+                                             default=int(mode(list(code[1::]))
+                                                         [0][0])))
                         for code in args.codes]
     new_df['aa_seq'] = [translate(na) for na in new_df['na_seq']]
     new_df.to_csv(args.out_file, index=False)
