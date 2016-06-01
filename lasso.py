@@ -1,18 +1,17 @@
 """
 Run Lasso or Bayesian Ridge on a property.
 
-If -L selected, do LOO using Lasso.
-Otherwise, use Lasso to select features, then use report LOO results
+If -a given, use Lasso to select features, then report LOO results
 for Bayesian Ridge.
+
+Otherwise, use LOO CV to find best alpha, then use Lasso to select
+features and report LOO results for Bayesian Ridge.
 """
 # all the useful packages
 import numpy as np
 import pandas as pd
 from sys import exit
-from sklearn import cross_validation
-from sklearn import grid_search
-from sklearn import ensemble
-from sklearn import linear_model
+from sklearn import linear_model, cross_validation
 import sys
 sys.path.append('/Users/kevinyang/Documents/Projects/GPModel')
 sys.path.append ('/Users/seinchin/Documents/Caltech/Arnold Lab/Programming tools/GPModel')
@@ -20,7 +19,6 @@ import chimera_tools
 import cPickle as pickle
 import matplotlib.pyplot as plt
 import os
-import datetime
 import argparse
 
 def normalize(data):
@@ -53,7 +51,6 @@ y_c = args.y_column
 inds = ~pd.isnull(df[y_c])
 Ys = df[inds][y_c]
 Ys.index = range(len(Ys))
-dt = str(datetime.date.today())
 X_name = args.training.split('/')[0] + '/' + 'X_' + y_c
 
 print 'Trying to load X...'
@@ -67,13 +64,13 @@ except:
     sample_space, contacts = pickle.load(open(a_and_c))
     Xs, terms = chimera_tools.make_X(df[inds]['sequence'],
                                      sample_space, contacts,
-                                    collapse=False)
+                                     collapse=False)
     Xs = pd.DataFrame(Xs, index=Ys.index)
     with open(X_name + '.pkl', 'wb') as f:
         pickle.dump((Xs, terms), f)
 
 if args.alpha is None:
-    alphas = np.linspace(0.08, 0.023, num=31)
+    alphas = np.linspace(0.008, 0.023, num=31)
     Rs = []
     for alpha in alphas:
         clf = linear_model.Lasso(alpha=alpha)
