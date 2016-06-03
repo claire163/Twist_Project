@@ -10,16 +10,15 @@ features and report LOO results for Bayesian Ridge.
 # all the useful packages
 import numpy as np
 import pandas as pd
-from sys import exit
 from sklearn import linear_model, cross_validation
 import sys
 sys.path.append('/Users/kevinyang/Documents/Projects/GPModel')
 sys.path.append ('/Users/seinchin/Documents/Caltech/Arnold Lab/Programming tools/GPModel')
-import chimera_tools
+import chimera_tools, gpmodel, gpkernel
 import cPickle as pickle
 import matplotlib.pyplot as plt
-import os
 import argparse
+from scipy import stats
 
 def normalize(data):
     """
@@ -40,8 +39,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-a', '--alpha', type=float, required=False)
 parser.add_argument('-t', '--training',required=True)
 parser.add_argument('-y', '--y_column', required=True)
+parser.add_argument('-k', '--kernel', required=True)
 parser.add_argument('-p', '--plot', action='store_true')
-parser.add_argument('-d', '--drop', required=False, type=float)
 args = parser.parse_args()
 
 
@@ -50,7 +49,7 @@ with open(args.training) as f:
 y_c = args.y_column
 inds = ~pd.isnull(df[y_c])
 Ys = df[inds][y_c]
-Ys.index = range(len(Ys))
+Ys.index = df[inds]['name']
 X_name = args.training.split('/')[0] + '/' + 'X_' + y_c
 
 print 'Trying to load X...'
@@ -76,9 +75,9 @@ if args.alpha is None:
         clf = linear_model.Lasso(alpha=alpha)
         y = []
         for train, test in cross_validation.LeaveOneOut(len(Xs)):
-            X_train = Xs.loc[train]
-            y_train = Ys.loc[train]
-            X_test = Xs.loc[test]
+            X_train = Xs.iloc[train]
+            y_train = Ys.iloc[train]
+            X_test = Xs.iloc[test]
             clf.fit(X_train,y_train)
             y.append(clf.predict(X_test)[0])
         R = np.corrcoef(np.array(y), Ys)[0][1]
@@ -100,7 +99,15 @@ weights['weight'] = clf.coef_
 weights['term'] = terms
 weights = weights[~np.isclose(weights['weight'], 0.0)]
 terms = list(weights['term'].values)
-clf = linear_model.BayesianRidge()
+if args.kernel == 'lin':
+    kernel = gpkernel.LinearKernel()
+elif args.kernel == 'SE':
+    kernel = gpkernel.SEKernel()
+elif args.kernel == '52':
+    kernel = gpkernel.MaternKernel('5/2')
+elif args.kernel == '32':
+    kernel = gpkernel.MaternKernel('3/2')
+model = gpmodel.GPModel(kernel)
 a_and_c = 'alignment_and_contacts.pkl'
 sample_space, contacts = pickle.load(open(a_and_c))
 Xs, terms = chimera_tools.make_X(df[inds]['sequence'],
@@ -108,29 +115,44 @@ Xs, terms = chimera_tools.make_X(df[inds]['sequence'],
                                  terms=terms,
                                  collapse=False)
 Xs = pd.DataFrame(Xs, index=Ys.index)
-y = []
-for train, test in cross_validation.LeaveOneOut(len(Xs)):
-    X_train = Xs.loc[train]
-    y_train = Ys.loc[train]
-    X_test = Xs.loc[test]
-    clf.fit(X_train,y_train)
-    y.append(clf.predict(X_test)[0])
-print 'R =', np.corrcoef(np.array(y), Ys)[0][1]
-plt.plot(Ys, y,'k.')
-plt.margins(0.02)
-plt.xlabel('actual ' + y_c)
-plt.ylabel('predicted ' +  y_c)
-plt.savefig(X_name + '_' + str(alpha) + '_ridge.pdf')
-plt.show()
-with open(X_name + '_' +
-          str(alpha) + '_lasso' + '_weights.csv', 'w') as f:
-    weights.to_csv(f)
-weights = pd.DataFrame()
-weights['weight'] = clf.coef_
-weights['term'] = terms
-with open(X_name + '_' +
-          str(args.alpha) + '_ridge' + '_weights.csv', 'w') as f:
-    weights.to_csv(f)
+model.fit(Xs, Ys)
+print model.hypers
+LOOs = model.LOO_res (model.hypers, add_mean=True)
+actual = Ys
+predicted = LOOs['mu']
+var = LOOs['v']
+print 'log_ML = %f' %-model.ML
+print 'log_LOO_P = %f' %-model.log_p
+r1 = stats.rankdata(actual)
+r2 = stats.rankdata(predicted)
+tau = stats.kendalltau(r1, r2).correlation
+R = np.corrcoef(actual, predicted)[0,1]
+print 'tau = %.4f' %tau
+print 'R = %.4f' %R
+print 'Saving model results...'
+save_me = [args.kernel, args.y_column, str(-model.ML),
+           str(-model.log_p), str(R), str(tau),
+           '', ' '.join(str(model.hypers).split(',')), 'no',
+           'FALSE', str(alpha)]
 
-
-
+with open(args.training.split('/')[0] + '/models.csv', 'r') as f:
+    lines = [','.join(ell.split(',')[0:-2]) for ell in f.readlines()]
+if not ','.join(save_me[0:-2]) in lines:
+    with open(args.training.split('/')[0] + '/models.csv', 'a') as f:
+        f.write('\n' + ','.join(save_me))
+if args.plot:
+    plt.plot(Ys, predicted,'k.')
+    plt.margins(0.02)
+    plt.xlabel('actual ' + y_c)
+    plt.ylabel('predicted ' +  y_c)
+    name = args.training.split('/')[0] + '/models/' +\
+                args.kernel + '_' + y_c + '_' + str(alpha)
+    plt.savefig(name + '_LOO.pdf')
+    with open(name + '_LOO.txt','w') as f:
+        f.write(','.join(save_me))
+        f.write('\nname,mu,var,y\n')
+        for i,n in enumerate(Ys.index):
+            f.write (str(n)+','+str(predicted[n]))
+            f.write(','+str(var[n])+','+str(Ys.loc[n]))
+            f.write('\n')
+    plt.show()
