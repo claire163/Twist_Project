@@ -41,6 +41,7 @@ parser.add_argument('-t', '--training',required=True)
 parser.add_argument('-y', '--y_column', required=True)
 parser.add_argument('-k', '--kernel', required=True)
 parser.add_argument('-p', '--plot', action='store_true')
+parser.add_argument('-w', '--write', action='store_true')
 args = parser.parse_args()
 
 
@@ -133,7 +134,7 @@ print 'Saving model results...'
 save_me = [args.kernel, args.y_column, str(-model.ML),
            str(-model.log_p), str(R), str(tau),
            '', ' '.join(str(model.hypers).split(',')), 'no',
-           'FALSE', str(alpha)]
+           str(args.write), str(alpha)]
 
 with open(args.training.split('/')[0] + '/models.csv', 'r') as f:
     lines = [','.join(ell.split(',')[0:-2]) for ell in f.readlines()]
@@ -145,14 +146,19 @@ if args.plot:
     plt.margins(0.02)
     plt.xlabel('actual ' + y_c)
     plt.ylabel('predicted ' +  y_c)
+if args.write:
     name = args.training.split('/')[0] + '/models/' +\
                 args.kernel + '_' + y_c + '_' + str(alpha)
-    plt.savefig(name + '_LOO.pdf')
-    with open(name + '_LOO.txt','w') as f:
-        f.write(','.join(save_me))
-        f.write('\nname,mu,var,y\n')
-        for i,n in enumerate(Ys.index):
-            f.write (str(n)+','+str(predicted[n]))
-            f.write(','+str(var[n])+','+str(Ys.loc[n]))
-            f.write('\n')
-    plt.show()
+    if args.plot:
+        plt.savefig(name + '_LOO.pdf')
+        with open(name + '_LOO.txt', 'w') as f:
+            f.write(','.join(save_me))
+            f.write('\nname,mu,var,y\n')
+            for i,n in enumerate(Ys.index):
+                f.write (str(n)+','+str(predicted[n]))
+                f.write(','+str(var[n])+','+str(Ys.loc[n]))
+                f.write('\n')
+        plt.show()
+    model.dump(name + '.pkl')
+    with open(name + '_terms.pkl', 'wb') as f:
+        pickle.dump(terms, f)

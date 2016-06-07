@@ -15,6 +15,7 @@ import datetime
 from scipy import stats
 from collections import namedtuple
 from sklearn import metrics
+import seaborn as sns
 
 
 def main ():
@@ -31,6 +32,12 @@ def main ():
 
     print 'Loading model...'
     model = gpmodel.GPModel.load(args.model)
+    try:
+        with open(args.model.split('.pkl')[0] + '_terms.pkl', 'rb') as f:
+            terms = pickle.load(f)
+            has_terms = True
+    except IOError:
+        has_terms = False
 
     print 'Loading validation set...'
     with open (os.path.join(dir,args.validate),'r') as f:
@@ -41,8 +48,17 @@ def main ():
     print 'Making predictions...'
     X_seqs = [list(seq) for seq in df['sequence']]
     X_seqs = pd.DataFrame(X_seqs, index=df['name'])
-    data = pd.DataFrame(model.predicts(X_seqs),
-                              index=X_seqs.index)
+    if has_terms:
+        a_and_c = 'alignment_and_contacts.pkl'
+        sample_space, contacts = pickle.load(open(a_and_c))
+        X, terms = make_X(df['sequence'], sample_space, contacts,
+                          terms=terms, collapse=False)
+        X = pd.DataFrame(X, index=df['name'])
+        data = pd.DataFrame(model.predicts(X),
+                            index=df['name'])
+    else:
+        data = pd.DataFrame(model.predicts(X_seqs),
+                            index=X_seqs.index)
     print 'Computing metrics...'
     if model.regr:
         data.columns = ['mean', 'variance']
@@ -81,6 +97,7 @@ def main ():
     if args.plot:
         print 'Plotting...'
         if model.regr:
+            std = np.sqrt(data['variance'])
             plt.plot(data[args.y_column], data['mean'], 'o')
             plt.margins(0.02)
             plt.xlabel('actual ' + args.y_column)
@@ -88,7 +105,7 @@ def main ():
         else:
             auc = gptools.plot_ROC(data[args.y_column], data['pi'])
         if args.out_file is not None:
-            plt.savefig(args.out_file.split('.')[0] + '.pdf')
+            plt.savefig(args.out_file.split('.txt')[0] + '.pdf')
         else:
             plt.show()
 
