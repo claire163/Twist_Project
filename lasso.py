@@ -40,7 +40,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-a', '--alpha', type=float, required=False)
 parser.add_argument('-t', '--training',required=True)
 parser.add_argument('-y', '--y_column', required=True)
-parser.add_argument('-p', '--plot', action='store_true')
+parser.add_argument('-c', '--collapse', action='store_true')
 parser.add_argument('-d', '--drop', required=False, type=float)
 args = parser.parse_args()
 
@@ -64,7 +64,7 @@ except:
     sample_space, contacts = pickle.load(open(a_and_c))
     Xs, terms = chimera_tools.make_X(df[inds]['sequence'],
                                      sample_space, contacts,
-                                     collapse=False)
+                                     collapse=args.collapse)
     Xs = pd.DataFrame(Xs, index=Ys.index)
     with open(X_name + '.pkl', 'wb') as f:
         pickle.dump((Xs, terms), f)
@@ -106,7 +106,7 @@ sample_space, contacts = pickle.load(open(a_and_c))
 Xs, terms = chimera_tools.make_X(df[inds]['sequence'],
                                  sample_space, contacts,
                                  terms=terms,
-                                 collapse=False)
+                                 collapse=args.collapse)
 Xs = pd.DataFrame(Xs, index=Ys.index)
 y = []
 for train, test in cross_validation.LeaveOneOut(len(Xs)):
@@ -120,16 +120,17 @@ plt.plot(Ys, y,'k.')
 plt.margins(0.02)
 plt.xlabel('actual ' + y_c)
 plt.ylabel('predicted ' +  y_c)
-plt.savefig(X_name + '_' + str(alpha) + '_ridge.pdf')
+save_me = X_name + '_' + str(alpha)
+if args.collapse:
+    save_me += '_col'
+plt.savefig(save_me + '_ridge.pdf')
 plt.show()
-with open(X_name + '_' +
-          str(alpha) + '_lasso' + '_weights.csv', 'w') as f:
+with open(save_me + '_lasso_weights.csv', 'w') as f:
     weights.to_csv(f)
 weights = pd.DataFrame()
 weights['weight'] = clf.coef_
 weights['term'] = terms
-with open(X_name + '_' +
-          str(args.alpha) + '_ridge' + '_weights.csv', 'w') as f:
+with open(save_me + '_ridge_weights.csv', 'w') as f:
     weights.to_csv(f)
 
 
