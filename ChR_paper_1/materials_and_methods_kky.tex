@@ -1,0 +1,69 @@
+\documentclass[12pt]{article}
+\usepackage[latin1]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{gensymb}
+\usepackage{siunitx}
+\usepackage{enumerate}
+\usepackage{color}
+\usepackage{hyperref}
+%\usepackage[none]{hyphenat}
+\usepackage[letterpaper, portrait, margin=0.9in]{geometry}
+
+
+
+\title{\textsl{Materials and Methods}}
+\author{Kevin Yang}
+\date{\vspace{-5ex}}
+\begin{document}
+	\section*{Gaussian Process Regression and Classification}
+	\subsection*{The Gaussian process kernel}
+	Learning protein properties with Gaussian process landscapes requires kernel functions that measure the similarity between protein sequences within the landscape. A protein sequence $s$ of length $l$ is defined by the amino acid present at each location. This information can be encoded with a binary feature vector $\mathbf{x}_{se}$ that indicates the presence or absence of each amino acid at each position. The protein's structure can be represented by its residue-residue contact map. A residue pair was considered contacting if it contained any heavy atoms within 4.5 Angstroms in the C1C2 crystal structure. The Gaussian process models are relatively insensitive to changes in the cutoff distance and atom types considered (Romero PNAS 2013). The contact-map can also be encoded as a binary feature vector $\mathbf{x}_{st}$ that indicates the presence or absence of each possible contacting pair, which is a subset of the full feature vector describing all possible pairs of sequence elements. The sequence and structure feature vectors can also be concatenated to form a sequence-structure feature vector. 
+	
+	We considered three types of kernel functions $k(s_i, s_j)$. The linear kernel is defined as 
+	\begin{equation}
+		k(s_i, s_j) = \sigma_p^2 \mathbf{x}_i^T\mathbf{x}_j
+	\end{equation}
+	The hyperparameter $\sigma_p$ corresponds to the prior variance of a single sequence element or contact, which describes how quickly we expect the landscape to change before making any observations. 
+	The squared exponential kernel and Matern kernels are defined in terms of $r(s_i, s_j) = \|\mathbf{x}_i - \mathbf{x}_j\|_2$, where $\|\cdot,\cdot\|_2$ is the L2 norm. 
+	The squared exponential kernel is
+	\begin{equation}
+		k(s_i, s_j) = \sigma_f^2\operatorname{exp}\left[-\frac{r(s_i, s_j)^2}{2l^2}\right]
+	\end{equation}
+	where $\sigma_f$ and $l$ are also hyperparameters that encode our prior beliefs about the landscape. 
+	The Matern kernel with $\nu = \frac{5}{2}$ is 
+	\begin{equation}
+		k(s_i, s_j) = \left[1 + \frac{\sqrt{5}r(s_i, s_j)}{l} + \frac{5[r(s_i, s_j)]^2}{3l^2}\right] \operatorname{exp}\left(\frac{\sqrt{5}r(s_i, s_j)}{l}\right)
+	\end{equation}
+	where $l$ is once again a hyperparameter. 
+	\subsection*{Gaussian process regression}
+	In regression, the problem is to infer the value of an unknown function $f(\mathbf{x})$ at a novel point $\mathbf{x_*}$ given observations $\mathbf{y}$ at inputs $X$. Assuming that the observations are subject to independent identically distributed Gaussian noise, the posterior distribution of $f_* = f(\mathbf{x_*})$ for Gaussian process regression is Gaussian with mean
+	\begin{equation}  
+	\bar{f_*} = \mathbf{k}_*^T(K+\sigma_n^2I)^{-1}\mathbf{y}
+	\label{eqn:regr_mean}
+	\end{equation}
+	and variance 
+	\begin{equation}  
+	\mathbb{V}[f_*] = k(\mathbf{x}_*,\mathbf{x}_*) - \mathbf{k}_*^T(K+\sigma_n^2I)^{-1}\mathbf{k}_*
+	\label{eqn:regr_var}
+	\end{equation}
+	Where
+	\begin{itemize}
+		\item $K$ is the symmetric, square covariance matrix for the training set, where $K_{ij} = k(\mathbf{x}_i,\mathbf{x}_j)$ for $\mathbf{x}_i$ and $\mathbf{x}_j$ in the training set. 
+		\item $\mathbf{k}_*$ is the vector of covariances between the novel input and each input in the training set, where $k_{*i} = k(\mathbf{x}_*,\mathbf{x}_i)$
+		\item The scalar $k(\mathbf{x}_*,\mathbf{x}_*)$ is the kernel function of the novel input with itself. 
+	\end{itemize}
+	We found the hyperparameters in the kernel functions and the noise hyper parameter $\sigma_n$ by maximizing the log marginal likelihood: 
+	\begin{equation}  
+	\operatorname{log} p(\mathbf{y}|X) = -\frac{1}{2}\mathbf{y}^T(K+\sigma_n^ 2I)^{-1}\mathbf{y} - \frac{1}{2}\operatorname{log}|K+\sigma_n^ 2I| - 
+	\frac{n}{2}\operatorname{log}2\pi
+	\end{equation}
+	
+	We found that results could be improved by first performing feature selection with L1-regularized linear regression. We used leave-one-out cross validation to set the regularization hyperparameter, and then trained Gaussian process regression models using only those features with non-zero weights in the regularized linear regression. 
+	
+	\subsection*{Gaussian process classification}
+	In binary classification, instead of continuous outputs $\mathbf{y}$, the outputs are class labels $y_i\in \{+1,-1\}$, and the goal is to use the training data to make probabilistic predictions $\pi(\mathbf{x}_*) = p(y_*=+1|\mathbf{x}_*)$. Unfortunately, the posterior distribution for classification is analytically intractable. We use Laplace's method to approximate the posterior distribution. There is no noise hyperparameter in the classification case. Hyperparameters in the kernels are also found by maximizing the marginal likelihood. 
+	
+\end{document}
