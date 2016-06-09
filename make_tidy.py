@@ -54,11 +54,7 @@ def main():
     # zero index codes
     df['code'] = [chimera_tools.zero_index(c) for c in df['code']]
 
-    # add column for binary expression
-    # first, get indices where 'mkate_mean' is NaN
-    expressed = pd.Series.notnull(df['mKate_mean'])
-    # make the expression column
-    df['expression'] = [1 if e else -1 for e in expressed]
+
 
     # generate sequence as string
     a_and_c = os.path.join(dir, 'alignment_and_contacts.pkl')
