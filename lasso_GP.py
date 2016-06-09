@@ -70,6 +70,7 @@ except:
         pickle.dump((Xs, terms), f)
 
 if args.alpha is None:
+    print 'Finding alpha by cross-validation...'
     alphas = np.linspace(0.008, 0.023, num=31)
     Rs = []
     for alpha in alphas:
@@ -83,6 +84,9 @@ if args.alpha is None:
             y.append(clf.predict(X_test)[0])
         R = np.corrcoef(np.array(y), Ys)[0][1]
         Rs.append(R)
+        if len(Rs) > 1 and Rs[-1] < Rs[-2]:
+            alphas = alphas[0:len(Rs)]
+            break
     res = pd.DataFrame()
     res['alpha'] = alphas
     res['R'] = Rs
@@ -146,6 +150,7 @@ if args.plot:
     plt.margins(0.02)
     plt.xlabel('actual ' + y_c)
     plt.ylabel('predicted ' +  y_c)
+    plt.show()
 if args.write:
     name = args.training.split('/')[0] + '/models/' +\
                 args.kernel + '_' + y_c + '_' + str(alpha)
@@ -158,7 +163,6 @@ if args.write:
                 f.write (str(n)+','+str(predicted[n]))
                 f.write(','+str(var[n])+','+str(Ys.loc[n]))
                 f.write('\n')
-        plt.show()
     model.dump(name + '.pkl')
     with open(name + '_terms.pkl', 'wb') as f:
         pickle.dump(terms, f)
