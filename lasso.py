@@ -51,7 +51,9 @@ y_c = args.y_column
 inds = ~pd.isnull(df[y_c])
 Ys = df[inds][y_c]
 Ys.index = range(len(Ys))
-X_name = args.training.split('/')[0] + '/' + 'X_' + y_c
+X_name = args.training.split('/')[0] + '/X_' + y_c
+if args.collapse:
+    X_name += '_col'
 
 print 'Trying to load X...'
 try:
@@ -120,7 +122,7 @@ plt.plot(Ys, y,'k.')
 plt.margins(0.02)
 plt.xlabel('actual ' + y_c)
 plt.ylabel('predicted ' +  y_c)
-save_me = X_name + '_' + str(alpha)
+save_me = args.training.split('/')[0] + '/models/' + y_c + '_' + str(alpha)
 if args.collapse:
     save_me += '_col'
 plt.savefig(save_me + '_ridge.pdf')
