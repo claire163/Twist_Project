@@ -78,9 +78,14 @@ def main():
             seqs.append(''.join(chimera_tools.make_sequence(name_dict[name], c_assignments_dict, sample_space)))
     df['sequence'] = seqs
 
-    # make columns for log_mKate and log_gfp
+    # make columns for log properties
     df['log_mKate'] = np.log(df['mKate_mean'])
     df['log_GFP'] = np.log(df['GFP_mean'])
+    try:
+        df['log_intensity_ratio'] = np.log(df['intensity_ratio'])
+        df['log_sum_ratio'] = np.log(df['sum_ratio'])
+    except KeyError:
+        df['log_cell_ratio'] = np.log(df['cell_ratio'])
 
     # make binary splits
     split_me = ['mKate_mean', 'GFP_mean', 'sum_ratio',
@@ -90,13 +95,16 @@ def main():
         for how in hows:
             split(df, sp, how=how)
 
+    save_me = os.path.join(dir, args.name.split('/')[0])
+    if args.min_cells is not None:
+        save_me += '/' + str(args.min_cells) + 'props'
+    else:
+        save_me += '/props'
     # pickle
-    with open(os.path.join(dir, args.name.split('/')[0]
-                           + '/props.pkl'), 'wb') as f:
+    with open(save_me + '.pkl', 'wb') as f:
         pickle.dump(df, f)
     # save as a csv
-    with open(os.path.join(dir, args.name.split('/')[0]
-                           + '/props.csv'), 'wb') as f:
+    with open(save_me + '.csv', 'wb') as f:
         df.to_csv(f)
 
 def identity(str1, str2):
