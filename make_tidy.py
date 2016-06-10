@@ -31,6 +31,9 @@ def split(df, column_name, how):
     except KeyError:
         pass
 
+def make_subblocks(code, conversion_dict):
+    subblocks = ''.join([code[conversion_dict[k]] for k in range(len(conversion_dict))])
+
 def main():
     dir = os.path.dirname(__file__)
     parser = argparse.ArgumentParser()
@@ -54,7 +57,16 @@ def main():
     # zero index codes
     df['code'] = [chimera_tools.zero_index(c) for c in df['code']]
 
-
+    # generate subblocks
+    sub_df = pd.read_csv('df_s_c_n_sblock.csv')
+    for c in ['s_blocks', 's_c_conv', 's_n_conv']:
+        sub_df[c] = [ord(s) -65 for s in sub_df[c]]
+    c_dict = {s:c for s,c in zip(sub_df['s_blocks'], sub_df['s_c_conv'])}
+    n_dict = {s:n for s,n in zip(sub_df['s_blocks'], sub_df['s_n_conv'])}
+    dict_dict = {'c':c_dict, 'n':n_dict}
+    df['subblock'] = [''.join([code[dict_dict[name[0]][k]]
+                               for k in range(len(dict_dict[name[0]]))])
+                      for code, name in zip(df['code'], df['name'])]
 
     # generate sequence as string
     a_and_c = os.path.join(dir, 'alignment_and_contacts.pkl')
