@@ -42,6 +42,8 @@ parser.add_argument('-t', '--training',required=True)
 parser.add_argument('-y', '--y_column', required=True)
 parser.add_argument('-c', '--collapse', action='store_true')
 parser.add_argument('-d', '--drop', required=False, type=float)
+parser.add_argument('-s', '--subblocks', action='store_true')
+
 args = parser.parse_args()
 
 
@@ -54,6 +56,8 @@ Ys.index = range(len(Ys))
 X_name = args.training.split('/')[0] + '/X_' + y_c
 if args.collapse:
     X_name += '_col'
+if args.subblocks:
+    X_name += '_subblocks'
 
 print 'Trying to load X...'
 try:
@@ -62,11 +66,16 @@ try:
         print '\t success!'
 except:
     print 'Building X ...'
-    a_and_c = 'alignment_and_contacts.pkl'
-    sample_space, contacts = pickle.load(open(a_and_c))
-    Xs, terms = chimera_tools.make_X(df[inds]['sequence'],
-                                     sample_space, contacts,
-                                     collapse=args.collapse)
+    if args.subblocks:
+        sample_space = [('0','1','2') for _ in range(len(df.iloc[0]['subblock']))]
+        Xs, terms = chimera_tools.make_sequence_X(df[inds]['subblock'],
+                                                  sample_space)
+    else:
+        a_and_c = 'alignment_and_contacts.pkl'
+        sample_space, contacts = pickle.load(open(a_and_c))
+        Xs, terms = chimera_tools.make_X(df[inds]['sequence'],
+                                         sample_space, contacts,
+                                         collapse=False)
     Xs = pd.DataFrame(Xs, index=Ys.index)
     with open(X_name + '.pkl', 'wb') as f:
         pickle.dump((Xs, terms), f)
@@ -103,12 +112,17 @@ weights['term'] = terms
 weights = weights[~np.isclose(weights['weight'], 0.0)]
 terms = list(weights['term'].values)
 clf = linear_model.BayesianRidge()
-a_and_c = 'alignment_and_contacts.pkl'
-sample_space, contacts = pickle.load(open(a_and_c))
-Xs, terms = chimera_tools.make_X(df[inds]['sequence'],
-                                 sample_space, contacts,
-                                 terms=terms,
-                                 collapse=args.collapse)
+if args.subblocks:
+    X_terms = [chimera_tools.get_terms(x) for x in df[inds]['subblock']]
+    Xs = chimera_tools.X_from_terms(X_terms, terms)
+    print X_terms
+else:
+    a_and_c = 'alignment_and_contacts.pkl'
+    sample_space, contacts = pickle.load(open(a_and_c))
+    Xs, terms = chimera_tools.make_X(df[inds]['sequence'],
+                                     sample_space, contacts,
+                                     terms=terms,
+                                     collapse=args.collapse)
 Xs = pd.DataFrame(Xs, index=Ys.index)
 y = []
 for train, test in cross_validation.LeaveOneOut(len(Xs)):
@@ -125,6 +139,8 @@ plt.ylabel('predicted ' +  y_c)
 save_me = args.training.split('/')[0] + '/models/' + y_c + '_' + str(alpha)
 if args.collapse:
     save_me += '_col'
+if args.subblocks:
+    save_me += '_subblocks'
 plt.savefig(save_me + '_ridge.pdf')
 plt.show()
 with open(save_me + '_lasso_weights.csv', 'w') as f:

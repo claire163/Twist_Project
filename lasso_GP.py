@@ -42,6 +42,7 @@ parser.add_argument('-y', '--y_column', required=True)
 parser.add_argument('-k', '--kernel', required=True)
 parser.add_argument('-p', '--plot', action='store_true')
 parser.add_argument('-w', '--write', action='store_true')
+parser.add_argument('-s', '--subblocks', action='store_true')
 args = parser.parse_args()
 
 
@@ -52,6 +53,8 @@ inds = ~pd.isnull(df[y_c])
 Ys = df[inds][y_c]
 Ys.index = df[inds]['name']
 X_name = args.training.split('/')[0] + '/' + 'X_' + y_c
+if args.subblocks:
+    X_name += '_subblocks'
 
 print 'Trying to load X...'
 try:
@@ -60,11 +63,16 @@ try:
         print '\t success!'
 except:
     print 'Building X ...'
-    a_and_c = 'alignment_and_contacts.pkl'
-    sample_space, contacts = pickle.load(open(a_and_c))
-    Xs, terms = chimera_tools.make_X(df[inds]['sequence'],
-                                     sample_space, contacts,
-                                     collapse=False)
+    if args.subblocks:
+        sample_space = [('0','1','2') for _ in range(len(df.iloc[0]['subblock']))]
+        Xs, terms = chimera_tools.make_sequence_X(df[inds]['subblock'],
+                                                  sample_space)
+    else:
+        a_and_c = 'alignment_and_contacts.pkl'
+        sample_space, contacts = pickle.load(open(a_and_c))
+        Xs, terms = chimera_tools.make_X(df[inds]['sequence'],
+                                         sample_space, contacts,
+                                         collapse=False)
     Xs = pd.DataFrame(Xs, index=Ys.index)
     with open(X_name + '.pkl', 'wb') as f:
         pickle.dump((Xs, terms), f)
@@ -104,6 +112,16 @@ weights['weight'] = clf.coef_
 weights['term'] = terms
 weights = weights[~np.isclose(weights['weight'], 0.0)]
 terms = list(weights['term'].values)
+if args.subblocks:
+    X_terms = [chimera_tools.get_terms(x) for x in df[inds]['subblock']]
+    Xs = chimera_tools.X_from_terms(X_terms, terms)
+else:
+    a_and_c = 'alignment_and_contacts.pkl'
+    sample_space, contacts = pickle.load(open(a_and_c))
+    Xs, terms = chimera_tools.make_X(df[inds]['sequence'],
+                                     sample_space, contacts,
+                                     terms=terms,
+                                     collapse=args.collapse)
 if args.kernel == 'lin':
     kernel = gpkernel.LinearKernel()
 elif args.kernel == 'SE':
@@ -113,12 +131,6 @@ elif args.kernel == '52':
 elif args.kernel == '32':
     kernel = gpkernel.MaternKernel('3/2')
 model = gpmodel.GPModel(kernel)
-a_and_c = 'alignment_and_contacts.pkl'
-sample_space, contacts = pickle.load(open(a_and_c))
-Xs, terms = chimera_tools.make_X(df[inds]['sequence'],
-                                 sample_space, contacts,
-                                 terms=terms,
-                                 collapse=False)
 Xs = pd.DataFrame(Xs, index=Ys.index)
 model.fit(Xs, Ys)
 print model.hypers
@@ -135,7 +147,10 @@ R = np.corrcoef(actual, predicted)[0,1]
 print 'tau = %.4f' %tau
 print 'R = %.4f' %R
 print 'Saving model results...'
-save_me = [args.kernel, args.y_column, str(-model.ML),
+kernel = args.kernel
+if args.subblocks:
+    kernel += '_subblocks'
+save_me = [kernel, args.y_column, str(-model.ML),
            str(-model.log_p), str(R), str(tau),
            '', ' '.join(str(model.hypers).split(',')), 'no',
            str(args.write), str(alpha)]
@@ -154,6 +169,8 @@ if args.plot:
 if args.write:
     name = args.training.split('/')[0] + '/models/' +\
                 args.kernel + '_' + y_c + '_' + str(alpha)
+    if args.subblocks:
+        name += '_subblocks'
     if args.plot:
         plt.savefig(name + '_LOO.pdf')
         with open(name + '_LOO.txt', 'w') as f:
