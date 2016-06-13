@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 import os
 import argparse
 from scipy import stats
+import itertools
 
 def LOO(clf, Xs, Ys):
     y = []
@@ -155,7 +156,7 @@ def main():
         X_name += '_col'
     if args.subblocks:
         X_name += '_subblocks'
-
+    print X_name
     print 'Trying to load X...'
     try:
         with open(X_name + '.pkl') as f:
@@ -164,9 +165,12 @@ def main():
     except:
         print 'Building X ...'
         if args.subblocks:
-            sample_space = [('0','1','2') for _ in range(len(df.iloc[0]['subblock']))]
-            Xs, terms = chimera_tools.make_sequence_X(df[inds]['subblock'],
-                                                      sample_space)
+            n_subblocks = len(df.iloc[0]['subblock'])
+            sample_space = [('0','1','2') for _ in range(n_subblocks)]
+            contacts = [c for c in
+                        itertools.combinations(range(n_subblocks), 2)]
+            Xs, terms = chimera_tools.make_X(df[inds]['subblock'],
+                                             sample_space, contacts)
         else:
             a_and_c = 'alignment_and_contacts.pkl'
             sample_space, contacts = pickle.load(open(a_and_c))
@@ -178,7 +182,8 @@ def main():
             pickle.dump((Xs, terms), f)
 
     if args.alpha is None:
-        alphas = np.linspace(0.008, 0.028, num=36)
+        print 'Finding alpha by cross-validation...'
+        alphas = np.linspace(0.008, 0.028, num=41)
         Rs = [LOO(linear_model.Lasso(alpha=alpha), Xs, Ys,) for alpha in alphas]
         res = pd.DataFrame()
         res['alpha'] = alphas
