@@ -15,11 +15,7 @@ def main():
     dir = os.path.dirname(__file__)
 
     # load the GPModel
-    ms = ['2016-02-17_models/2016-03-25__log_mKate_structure_dict.pkl',
-         '2016-02-17_models/2016-03-25__log_mKate_SEStructure_dict.pkl',
-         '2016-02-17_models/2016-03-25__log_mKate_32Structure_dict.pkl',
-         '2016-02-17_models/2016-03-25__log_mKate_52Structure_dict.pkl']
-         #'2016-02-02__log_mKate_SEStructure_dict.pkl']
+    ms = ['2016-05-11/models/2016-06-13__log_mKate_structure.pkl']
     for m in ms:
         print 'loading model...'
         model = gpmodel.GPModel.load(m)
@@ -36,32 +32,28 @@ def main():
                     ssw.append(i)
             except:
                 ssw.append(i)
-        mi = list(set(X.index) - set(ssw))
-        X_ssw = X.loc[ssw]
-        X_mi = X.loc[mi]
-        Y_ssw = Y.loc[ssw]
-        Y_mi = Y.loc[mi]
         Rs = []
-        ns = range(0, len(mi), 15)
-        ns = ns + [53]
+        max_n = len(X) - len(ssw)
+        ns = range(0, max_n, 15)
+        ns = ns + [max_n-1]
         for n in ns[::-1]:
             print n
-            predicted, actual = gptools.cv(X_mi, Y_mi, model, n,
-                                           replicates=100,
-                                          X_always=X_ssw,
-                                          Y_always=Y_ssw)
+            predicted, actual = gptools.cv(X, Y, model, n,
+                                           replicates=1,
+                                          keep_inds = ssw)
             Rs.append(np.corrcoef(predicted, actual)[0,1])
-        plt.plot(ns, Rs[::-1], '.-')
-    plt.xlabel('Number maximally informative in training set')
-    plt.ylabel('R')
-    plt.legend(["linear",
-                'exponential',
-               r"Matern, $\nu=\frac{3}{2}$",
-                r'Matern, $\nu=\frac{5}{2}$'],
-               loc='best')
-    plt.margins(0.02)
-    plt.savefig('plots/log_mKate_mean_learning_curves_3.pdf')
-    plt.show()
+    print Rs
+#         plt.plot(ns, Rs[::-1], '.-')
+#     plt.xlabel('Number maximally informative in training set')
+#     plt.ylabel('R')
+#     plt.legend(["linear",
+#                 'exponential',
+#                r"Matern, $\nu=\frac{3}{2}$",
+#                 r'Matern, $\nu=\frac{5}{2}$'],
+#                loc='best')
+#     plt.margins(0.02)
+#     plt.savefig('plots/log_mKate_mean_learning_curves_3.pdf')
+#     plt.show()
 
 
 if __name__ == "__main__":
