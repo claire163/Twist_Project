@@ -69,8 +69,8 @@ def main():
                       for code, name in zip(df['code'], df['name'])]
 
     # generate sequence as string
-    a_and_c = os.path.join(dir, 'alignment_and_contacts.pkl')
-    sample_space, contacts = pickle.load(open(a_and_c))
+    a_and_c = os.path.join(dir, 'expanded_alignment_and_contacts.pkl')
+    sample_space, contacts = pickle.load(open(a_and_c, 'rb'))
     c_assignments_file = os.path.join(dir,'clibrary.output')
     n_assignments_file = os.path.join(dir,'nlibrary.output')
     c_assignments_dict = chimera_tools.load_assignments(c_assignments_file)
@@ -93,7 +93,10 @@ def main():
         df['log_intensity_ratio'] = np.log(df['intensity_ratio'])
         df['log_sum_ratio'] = np.log(df['sum_ratio'])
     except KeyError:
-        df['log_cell_ratio'] = np.log(df['cell_ratio'])
+        try:
+            df['log_cell_ratio'] = np.log(df['cell_ratio'])
+        except:
+            pass
 
     # make binary splits
     split_me = ['mKate_mean', 'GFP_mean', 'sum_ratio',
