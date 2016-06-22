@@ -172,7 +172,6 @@ def main ():
         model_file = args.training.split('/')[0] + '/models/'
         name = model_file + '_'.join([str(dt), args.name, args.y_column,
                                       '_'.join(args.kernel)])
-        print model.objective
         model.dump(os.path.join(dir, name + '.pkl'))
         if model.regr:
             with open(os.path.join(dir, name + '_LOO.txt'),'w') as f:
