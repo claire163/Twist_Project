@@ -71,7 +71,7 @@ def Bayesian_Ridge_results(Xs, Ys, subblocks, plot, collapse, y_c):
         weights.to_csv(f)
 
 def GP_results(kernel_name, Xs, Ys, subblocks, plot,
-               write, training, y_c, alpha):
+               write, training, y_c, alpha, terms):
     if kernel_name == 'lin':
         kernel = gpkernel.LinearKernel()
     elif kernel_name == 'SE':
@@ -117,18 +117,18 @@ def GP_results(kernel_name, Xs, Ys, subblocks, plot,
         plt.show()
     if write:
         name = training.split('/')[0] + '/models/' +\
-                    args.kernel + '_' + y_c + '_' + str(alpha)
+                    kernel_name + '_' + y_c + '_' + str(alpha)
         if subblocks:
             name += '_subblocks'
+        with open(name + '_LOO.txt', 'w') as f:
+            f.write(','.join(save_me))
+            f.write('\nname,mu,var,y\n')
+            for i,n in enumerate(Ys.index):
+                f.write (str(n)+','+str(predicted[n]))
+                f.write(','+str(var[n])+','+str(Ys.loc[n]))
+                f.write('\n')
         if plot:
             plt.savefig(name + '_LOO.pdf')
-            with open(name + '_LOO.txt', 'w') as f:
-                f.write(','.join(save_me))
-                f.write('\nname,mu,var,y\n')
-                for i,n in enumerate(Ys.index):
-                    f.write (str(n)+','+str(predicted[n]))
-                    f.write(','+str(var[n])+','+str(Ys.loc[n]))
-                    f.write('\n')
         model.dump(name + '.pkl')
         with open(name + '_terms.pkl', 'wb') as f:
             pickle.dump(terms, f)
@@ -150,7 +150,7 @@ def main():
     y_c = args.y_column
     inds = ~pd.isnull(df[y_c])
     Ys = df[inds][y_c]
-    Ys.index = range(len(Ys))
+    Ys.index = df[inds]['name']
     X_name = args.training.split('/')[0] + '/X_' + y_c
     if args.collapse:
         X_name += '_col'
@@ -214,7 +214,7 @@ def main():
                                          collapse=args.collapse)
     if args.kernel is not None:
         GP_results(args.kernel, Xs, Ys, args.subblocks,
-                   args.plot, args.write, args.training, y_c, alpha)
+                   args.plot, args.write, args.training, y_c, alpha, terms)
     else:
         Bayesian_Ridge_results(Xs, Ys, args.subblocks,
                                args.plot, args.collapse, y_c)
