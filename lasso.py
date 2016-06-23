@@ -81,7 +81,10 @@ def GP_results(kernel_name, Xs, Ys, subblocks, plot,
     elif kernel_name == '32':
         kernel = gpkernel.MaternKernel('3/2')
     model = gpmodel.GPModel(kernel)
-    Xs = pd.DataFrame(Xs, index=Ys.index)
+    if isinstance(Xs, pd.DataFrame):
+        Xs.index = Ys.index
+    else:
+        Xs = pd.DataFrame(Xs, index=Ys.index)
     model.fit(Xs, Ys)
     print model.hypers
     LOOs = model.LOO_res (model.hypers, add_mean=True)
@@ -194,24 +197,25 @@ def main():
     else:
         alpha = args.alpha
     print alpha
-
-    clf = linear_model.Lasso(alpha=alpha)
-    clf.fit(Xs, Ys)
-    weights = pd.DataFrame()
-    weights['weight'] = clf.coef_
-    weights['term'] = terms
-    weights = weights[~np.isclose(weights['weight'], 0.0)]
-    terms = list(weights['term'].values)
-    if args.subblocks:
-        X_terms = [chimera_tools.get_terms(x) for x in df[inds]['subblock']]
-        Xs = chimera_tools.X_from_terms(X_terms, terms)
-    else:
-        a_and_c = 'alignment_and_contacts.pkl'
-        sample_space, contacts = pickle.load(open(a_and_c))
-        Xs, terms = chimera_tools.make_X(df[inds]['sequence'],
-                                         sample_space, contacts,
-                                         terms=terms,
-                                         collapse=args.collapse)
+    if alpha != 0:
+        print 'Using Lasso for feature selection...'
+        clf = linear_model.Lasso(alpha=alpha)
+        clf.fit(Xs, Ys)
+        weights = pd.DataFrame()
+        weights['weight'] = clf.coef_
+        weights['term'] = terms
+        weights = weights[~np.isclose(weights['weight'], 0.0)]
+        terms = list(weights['term'].values)
+        if args.subblocks:
+            X_terms = [chimera_tools.get_terms(x) for x in df[inds]['subblock']]
+            Xs = chimera_tools.X_from_terms(X_terms, terms)
+        else:
+            a_and_c = 'alignment_and_contacts.pkl'
+            sample_space, contacts = pickle.load(open(a_and_c))
+            Xs, terms = chimera_tools.make_X(df[inds]['sequence'],
+                                             sample_space, contacts,
+                                             terms=terms,
+                                             collapse=args.collapse)
     if args.kernel is not None:
         GP_results(args.kernel, Xs, Ys, args.subblocks,
                    args.plot, args.write, args.training, y_c, alpha, terms)
