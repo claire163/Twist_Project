@@ -187,7 +187,7 @@ def main ():
             auc = metrics.auc(fpr,tpr)
             print 'LOO AUC = %.4f' %auc
             with open (name + '_LOO.txt', 'w') as f:
-                f.write ('name,'+args.y_column+ ',pi\n')
+                f.write ('name,y,pi\n')
                 for n, r, p in zip (model.Y.index, model.Y, predicted):
                     f.write (n + ',' + str(r) + ',' + str(p) + '\n')
     if args.plot:

@@ -61,24 +61,24 @@ def main ():
                             index=X_seqs.index)
     print 'Computing metrics...'
     if model.regr:
-        data.columns = ['mean', 'variance']
+        data.columns = ['mu', 'variance']
         y = df[args.y_column]
         y.index = data.index
-        data[args.y_column] = y
+        data['y'] = y
         print data
-        r1 = stats.rankdata(data[args.y_column])
-        r2 = stats.rankdata(data['mean'])
+        r1 = stats.rankdata(data['y'])
+        r2 = stats.rankdata(data['mu'])
         tau = stats.kendalltau(r1, r2).correlation
-        R = np.corrcoef(data[args.y_column], data['mean'])[0,1]
+        R = np.corrcoef(data['y'], data['mu'])[0,1]
         print 'tau = %.4f' %tau
         print 'R = %.4f' %R
     else:
         data.columns = ['pi', 'f_bar', 'variance']
         y = df[args.y_column]
         y.index = data.index
-        data[args.y_column] = y
+        data['y'] = y
         print data
-        fpr, tpr, _ = metrics.roc_curve(data[args.y_column], data['pi'])
+        fpr, tpr, _ = metrics.roc_curve(data['y'], data['pi'])
         auc = metrics.auc(fpr,tpr)
         print 'AUC = %.4f' %auc
     # plot
@@ -88,22 +88,22 @@ def main ():
         data.to_csv(args.out_file)
         with open(args.out_file, 'a') as f:
             if model.regr:
-                f.write('tau = %.4f\n' %tau)
-                f.write('R = %.4f' %R)
+                f.write('# tau = %.4f\n' %tau)
+                f.write('# R = %.4f' %R)
             else:
-                f.write('AUC = %.4f' %auc)
+                f.write('# AUC = %.4f' %auc)
 
 
     if args.plot:
         print 'Plotting...'
         if model.regr:
             std = np.sqrt(data['variance'])
-            plt.plot(data[args.y_column], data['mean'], 'o')
+            plt.plot(data['y'], data['mu'], 'o')
             plt.margins(0.02)
             plt.xlabel('actual ' + args.y_column)
             plt.ylabel('predicted' + args.y_column)
         else:
-            auc = gptools.plot_ROC(data[args.y_column], data['pi'])
+            auc = gptools.plot_ROC(data['y'], data['pi'])
         if args.out_file is not None:
             plt.savefig(args.out_file.split('.txt')[0] + '.pdf')
         else:

@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 import datetime
 import itertools
+from sys import exit
 
 """ Here, 'code' refers to 'n' or 'c' + (10 digits)"""
 
@@ -48,6 +49,25 @@ def double_write(s, p=False, w=None):
     if w is not None:
         w.write(s)
 
+def get_all_sequences():
+    try:
+        print 'Attempting to load all possible sequences...'
+        sequences = pd.read_csv('all_chimeras.txt')
+        sequences.index = sequences['Unnamed: 0']
+        sequences = sequences.drop(sequences.columns[[0]], axis=1)
+        print '\tSuccess!'
+    except:
+        print 'Generating all possible sequences...'
+        # generate all possible chimeras
+        # load the assignment dicts for contiguous and non-contiguous
+        sequences = pd.DataFrame()
+        for c in itertools.product([0,1,2],repeat=10):
+            this = ''.join([str(i) for i in c])
+            codes = ['n'+this, 'c'+this]
+            sequences = pd.concat([sequences, codes_to_seqs(codes)])
+        sequences.to_csv('all_chimeras.txt')
+    return sequences
+
 dir = os.path.dirname(__file__)
 parser = argparse.ArgumentParser()
 parser.add_argument('-m', '--model',required=True)
@@ -74,13 +94,21 @@ sample_space, contacts = pickle.load(open(a_and_c))
 #load the model
 print 'Loading the model...'
 model = gpmodel.GPModel.load(args.model)
-
+try:
+    with open(args.model.split('.pkl')[0] + '_terms.pkl', 'rb') as f:
+        terms = pickle.load(f)
+        has_terms = True
+except IOError:
+    has_terms = False
 
 def main():
     if model.regr:
-        head = 'code,mean,variance\n'
+        head = 'code,mu,variance\n'
     else:
         head = 'code,pi,f_bar,variance\n'
+
+    if has_terms:
+        global terms
 
     double_write(head, p=args.pr, w = out_file)
 
@@ -90,7 +118,12 @@ def main():
         with open (os.path.join(dir,args.seq_file),'r') as f:
             seqs = pd.read_csv(f, header=None)
         seqs.columns = ['name', 'sequence']
-        seqs = pd.DataFrame([[s for s in se] for se in seqs.sequence],
+        if has_terms:
+            X, terms = make_X(seqs['sequence'], sample_space, contacts,
+                                 terms=terms, collapse=False)
+            seqs = pd.DataFrame(X, index=seqs.name)
+        else:
+            seqs = pd.DataFrame([[s for s in se] for se in seqs.sequence],
                             index=seqs.name)
         double_write(formatted_predict(model, seqs), p=args.pr, w=out_file)
         predicted = True
@@ -103,25 +136,30 @@ def main():
         predicted = True
 
     if not predicted:
-        print 'Attempting to load all possible sequences...'
-        try:
-            sequences = pd.read_csv('all_chimeras.txt')
-            sequences.index = sequences['Unnamed: 0']
-            sequences = sequences.drop(sequences.columns[[0]], axis=1)
-            print '\tSuccess!'
-        except:
-            print 'Generating all possible sequences'
-            # generate all possible chimeras
-            # load the assignment dicts for contiguous and non-contiguous
-            sequences = pd.DataFrame()
-            for c in itertools.product([0,1,2],repeat=10):
-                this = ''.join([str(i) for i in c])
-                codes = ['n'+this, 'c'+this]
-                sequences = pd.concat([sequences, codes_to_seqs(codes)])
-            sequences.to_csv('all_chimeras.txt')
+        if has_terms:
+            print 'Attempting to load all possible Xs...'
+            try:
+                sequences = pd.read_csv('all_chimeras_X.txt') # actually X
+                sequences.index = sequences['Unnamed: 0']
+                sequences = sequences.drop(sequences.columns[[0]], axis=1)
+                print '\tSuccess'
+            except:
+                print 'Generating all possible Xs...'
+                sequences = get_all_sequences()
+                seqs = [''.join(s) for _, s in sequences.iterrows()]
+                seqs = pd.DataFrame(seqs, index=sequences.index,
+                                    columns=['sequence'])
+                X, terms = chimera_tools.make_X(seqs['sequence'], sample_space,
+                                               contacts, terms=terms,
+                                               collapse=False)
+                sequences = pd.DataFrame(Xs, index=seqs.index)
+                sequences.to_csv('all_chimeras_X.txt')
+        else:
+            sequences = get_all_sequences()
+
         for i in sequences.index:
-            cod = sequences.loc[[i]]
-            preds = formatted_predict(model,cod)
+            seq = sequences.loc[[i]]
+            preds = formatted_predict(model,seq)
             double_write(preds,p=args.pr,w=out_file)
     if args.write:
         out_file.close()
