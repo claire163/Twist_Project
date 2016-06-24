@@ -77,6 +77,9 @@ def main ():
         y = df[args.y_column]
         y.index = data.index
         data['y'] = y
+        reals = df['log_' + args.y_column.split('_above_parent')[0]]
+        reals.index = data.index
+        data['real'] = reals
         print data
         fpr, tpr, _ = metrics.roc_curve(data['y'], data['pi'])
         auc = metrics.auc(fpr,tpr)
