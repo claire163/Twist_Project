@@ -137,23 +137,24 @@ def main():
 
     if not predicted:
         if has_terms:
-            print 'Attempting to load all possible Xs...'
-            try:
-                sequences = pd.read_csv('all_chimeras_X.txt') # actually X
-                sequences.index = sequences['Unnamed: 0']
-                sequences = sequences.drop(sequences.columns[[0]], axis=1)
-                print '\tSuccess'
-            except:
-                print 'Generating all possible Xs...'
-                sequences = get_all_sequences()
-                seqs = [''.join(s) for _, s in sequences.iterrows()]
-                seqs = pd.DataFrame(seqs, index=sequences.index,
+            print 'Generating all possible Xs...'
+            sequences = get_all_sequences()
+            seqs = [''.join(s) for _, s in sequences.iterrows()]
+            seqs = pd.DataFrame(seqs, index=sequences.index,
                                     columns=['sequence'])
-                X, terms = chimera_tools.make_X(seqs['sequence'], sample_space,
-                                               contacts, terms=terms,
-                                               collapse=False)
-                sequences = pd.DataFrame(Xs, index=seqs.index)
-                sequences.to_csv('all_chimeras_X.txt')
+            n_splits = 1000
+            n_per = len(seqs.index) / n_splits
+            inds = [seqs.index[n * n_per: (n+1) * n_per]
+                    for n in range(n_splits)]
+            inds.append(seqs.index[n_splits * n_per::])
+            all_Xs = []
+            for i,ind in enumerate(inds):
+                X, terms = chimera_tools.make_X(seqs.loc[ind]['sequence'],
+                                                sample_space,
+                                                contacts, terms=terms,
+                                                collapse=False)
+                all_Xs.append(pd.DataFrame(X, index=ind))
+            sequences = pd.concat(all_Xs)
         else:
             sequences = get_all_sequences()
 
