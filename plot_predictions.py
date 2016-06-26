@@ -37,26 +37,36 @@ if len(df.columns) == 3:
     df['rank'] = range(len(df))
     plt.plot(df['rank'], df['mu'], color='grey', alpha=0.7)
     trained = df[df['code'].isin(trained_codes)]
-#     plt.errorbar(trained['rank'], trained['mu'],
-#                  yerr=[s for s in trained['std']],
-#                 fmt='o', color='grey', alpha=0.8)
+    plt.plot(trained['rank'], trained['mu'],
+             'o', color='grey', alpha=0.8)
     for p in parent_names[::-1]:
         plt.errorbar(df[df['code']==p]['rank'], df[df['code']==p]['mu'],
                      yerr=df[df['code']==p]['std'], fmt='o',
                      color=parents_dict[p], alpha=0.8, ms=6)
     plt.fill_between(df['rank'], df['mu'] + df['std'], df['mu'] - df['std'],
                      facecolor='grey', alpha=0.3)
-    plt.gca().set_xlim([plt.gca().get_xlim()[0] - 1000,
-                        plt.gca().get_xlim()[1]])
-    plt.gca().get_xaxis().set_ticks([])
+
     plt.ylabel('predicted ' + args.name)
+    lg = plt.legend(('chimeras', 'tested', 'CsChrimR', 'C1C2', 'CheRiff'),
+                    loc='best')
+
+else:
+    df = df.sort_values('pi')
+    df['rank'] = range(len(df))
+    trained = df[df['code'].isin(trained_codes)]
+    plt.plot(df['rank'], df['pi'], color='grey', alpha=0.7)
+    plt.plot(trained['rank'], trained['pi'], 'o', color='grey', alpha=0.8)
+    for p in parent_names[::-1]:
+        parent = df[df['code']==p]
+        plt.plot(parent['rank'], parent['pi'], 'o', color=parents_dict[p],
+                 alpha=0.8, ms=6)
+    plt.ylabel('predicted probability of ' + args.name)
     lg = plt.legend(('chimeras', 'CsChrimR', 'C1C2', 'CheRiff'),
                     loc='best')
-#     plt.gca().set_xlim([-11.0,0.5])
-#     plt.gca().set_ylim([plt.gca().get_ylim()[0], 0.5])
-
-
-
+plt.xlabel('chimera')
+plt.gca().set_xlim([plt.gca().get_xlim()[0] - 1000,
+                    plt.gca().get_xlim()[1]])
+plt.gca().get_xaxis().set_ticks([])
 
 if args.write is not None:
     plt.savefig(args.write, bbox_inches='tight')
