@@ -60,8 +60,8 @@ else:
         parent = df[df['code']==p]
         plt.plot(parent['rank'], parent['pi'], 'o', color=parents_dict[p],
                  alpha=0.8, ms=6)
-    plt.ylabel('predicted probability of ' + args.name)
-    lg = plt.legend(('chimeras', 'CsChrimR', 'C1C2', 'CheRiff'),
+    plt.ylabel('predicted probability of\n' + args.name)
+    lg = plt.legend(('chimeras', 'tested', 'CsChrimR', 'C1C2', 'CheRiff'),
                     loc='best')
 plt.xlabel('chimera')
 plt.gca().set_xlim([plt.gca().get_xlim()[0] - 1000,
